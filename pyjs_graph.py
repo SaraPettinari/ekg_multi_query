@@ -1,7 +1,6 @@
 from neo4j import GraphDatabase
 from scripts.queries import ElementType
 import pandas as pd
-import graphistry
 import scripts.queries as queries
 import scripts.config as config
 import datetime
@@ -11,11 +10,6 @@ class MRSGraph:
     def __init__(self):
         self.edges = []
         self.nodes = []
-
-        # init graphistry connection
-        graphistry.register(api=3, username=config.GRAPHISTRY_USER,
-                            password=config.GRAPHISTRY_PASSWORD)
-        graphistry.register(bolt=config.NEO4J)
 
         # init neo4j connection
         self.driver = GraphDatabase.driver(**config.NEO4J)
@@ -83,7 +77,7 @@ class MRSGraph:
                         WHERE e1.Msg_Role = 'send' AND e2.Msg_Role = 'receive' AND e1.timestamp <= e2.timestamp
                         MERGE (e1)-[comm:COMM {EntityType:n.EntityType, ID:n.ID}]->(e2)
                           """)
-        
+
         res = self.session.run("""
                         MATCH (e1:Event)-[c:COMM]->(e2:Event)
                         RETURN e1.EventID as source, e2.EventID as destination, type(c) as edge_label
@@ -97,26 +91,15 @@ class MRSGraph:
 
         self.perspectives = perspectives
         self.set_properties()
-        # print(self.nodes[:5])
-        # print(self.edges[:5])
-
-        #h = graphistry.hypergraph(self.nodes, direct=True, opts={'EDGES': {'Activity': ['Actor']}, 'SKIP': ['EventID', 'timestamp']})
-        #h['graph'].plot()
 
         if communication:
             self.handle_communication()
 
-        g = graphistry.nodes(self.nodes).edges(self.edges).bind(source="source", destination="destination", node="EventID",
-                                                                point_label="Activity", edge_label="edge_label")
+        self.edges = self.edges.rename(
+            columns={'destination': 'to', 'source': 'from', 'edge_label': 'label'})
 
-        g = g.encode_point_color('Actor', palette=["blue", "red", "yellow", "purple"], as_continuous=True).settings(
-            url_params={'splashAfter': 'false', 'strongGravity': True, 'pointSize': 2.0})
+        return {'nodes': self.nodes, 'edges': self.edges}
 
-        g = g.layout_igraph('sugiyama', directed=True).rotate(90)
-
-        url = g.plot(render=False)
-
-        return url
 
 
 def extract_nodes(nodes, perspectives):
@@ -154,5 +137,5 @@ if __name__ == '__main__':
     perspectives = ['EventID', 'Activity', 'Actor', 'timestamp']
 
     mrsg = MRSGraph().generate_graph(
-        process_abstraction, event_abstraction, perspectives)
+        process_abstraction, event_abstraction, perspectives, communication=False)
     print(mrsg)
