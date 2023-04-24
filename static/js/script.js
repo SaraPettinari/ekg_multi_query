@@ -74,11 +74,14 @@ function draw(data) {
     nodes: {
       shape: 'box',
       color: {
-        border: '#919191',
-        background: '#00ccff'
+        border: '#000000',
+        background: '#ffffff'
+      },
+      shapeProperties: {
+        borderRadius: 2
       },
       font: {
-        size: 20
+        size: 40
       }
     },
     physics: {
@@ -91,12 +94,12 @@ function draw(data) {
       },
     },
     layout: {
-      improvedLayout: false,
+      improvedLayout: true,
       hierarchical: {
         enabled: true,
         direction: 'LR',
         sortMethod: "directed",
-        nodeSpacing: 200,
+        nodeSpacing: 500,
         levelSeparation: 500,
         treeSpacing: 500,
       }
@@ -106,11 +109,12 @@ function draw(data) {
         to: true
       },
       color: {
-        color: '#919191'
+        color: '#000000'
       },
       font: {
         background: '#ffffff',
-        size: 20
+        size: 30,
+        color: '#000000'
       },
       smooth: {
         enabled: false,
@@ -125,4 +129,98 @@ function draw(data) {
 
   // initialize your network!
   var network = new vis.Network(container, data, options);
+}
+
+function provaNNN(data) {
+  nodes = []
+  for (n in data.nodes) {
+    //node_data.push({ id: in_data.nodes[n]['EventID'], properties: in_data.nodes[n] })
+    node = data.nodes[n]
+    nodes.push({ data: { id: node.EventID, label: node.Activity.replaceAll("_", "\n"), color: node.color, node_data: node } })
+  }
+
+  edges = []
+  for (e in data.edges) {
+    edge = data.edges[e]
+    edges.push({ data: { source: edge.from, target: edge.to, id: e, label: edge.label, color: edge.color } })
+  }
+
+  elements = nodes.concat(edges)
+
+  //console.log(elements)
+
+  var cy = cytoscape({
+    container: document.getElementById('cyto'), // container to render in
+    elements: elements,
+    style: [ // the stylesheet for the graph
+      {
+        selector: 'node',
+        style: {
+          'height': 100,
+          'width': 100,
+          'background-color': 'data(color)' || '#666666',
+          'label': 'data(label)',
+          'font-size': 20,
+          'color': '#ffffff',
+          'text-wrap': 'wrap',
+          'text-halign': 'center',
+          'text-valign': 'center'
+        }
+      },
+
+      {
+        selector: 'edge',
+        style: {
+          'label': 'data(label)',
+          'width': 1,
+          'line-color': 'data(color)',
+          'target-arrow-color': 'data(color)',
+          'target-arrow-shape': 'triangle',
+          //'curve-style': 'segments',
+          'curve-style': 'straight',
+          //'curve-style': 'unbundled-bezier',
+          'text-background-opacity': 1,
+          'text-background-color': '#ffffff',
+        }
+      }
+    ],
+
+    layout: {
+      name: 'dagre',
+      directed: true,
+      spacingFactor: 1.5,
+      avoidOverlap: true,
+      nodeDimensionsIncludeLabels: true,
+      nodeSep: 50, // the separation between adjacent nodes in the same rank
+      edgeSep: 50, // the separation between adjacent edges in the same rank
+      rankSep: 150, // the separation between each rank in the layout
+      rankDir: 'TB', // 'TB' for top to bottom flow, 'LR' for left to right,
+
+      /*    name: 'elk',
+          nodeDimensionsIncludeLabels: true,
+          fit: true,
+          padding: 20,
+          elk: {
+            'algorithm': 'layered',
+            'elk.direction': 'RIGHT',
+            'elk.crossingMinimization': true,
+            'elk.spacing.edgeNode': 50,
+            'elk.spacing.edgeEdge': 50,
+            'elk.spacing.nodeNode': 30,
+            'elk.layered.spacing.nodeNodeBetweenLayers': 60,
+            'elk.layered.layering.strategy': 'DF_MODEL_ORDER',
+            'elk.layered.spacing.edgeNodeBetweenLayers': 40,
+            'elk.edgeRouting': 'POLYLINE',
+            'elk.edgeLabels.inline': true,
+            'elk.partitioning.activate': true,
+    
+          },*/
+    }
+
+  });
+
+  // TODO add button for saving svg
+  /* var svgContent = cy.svg({full: true})
+   var blob = new Blob([svgContent], {type:"image/svg+xml;charset=utf-8"});
+         saveAs(blob, "demo.svg");*/
 }

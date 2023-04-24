@@ -1,10 +1,10 @@
 from neo4j import GraphDatabase
 from scripts.queries import ElementType
+from scripts.style_ekg import StyleEKG
 import pandas as pd
 import scripts.queries as queries
 import scripts.config as config
 import datetime
-
 
 class MRSGraph:
     def __init__(self):
@@ -97,9 +97,15 @@ class MRSGraph:
 
         self.edges = self.edges.rename(
             columns={'destination': 'to', 'source': 'from', 'edge_label': 'label'})
-
+        
+        self.edges['color'] = self.edges['label'].apply(StyleEKG.set_edge_color)
+        
+        
+        if 'Actor' in self.nodes.columns:
+            nodecolors = StyleEKG.set_nodes_color(self.nodes)
+            self.nodes['color'] = self.nodes['Actor'].apply(nodecolors.get)
+        
         return {'nodes': self.nodes, 'edges': self.edges}
-
 
 
 def extract_nodes(nodes, perspectives):
