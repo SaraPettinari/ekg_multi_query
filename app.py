@@ -1,12 +1,14 @@
 from flask import Flask, render_template, jsonify, request
 from flask_bootstrap import Bootstrap
+from werkzeug.utils import secure_filename
 import json
+import os
 import scripts.queries as queries
 import scripts.config as config
 #from graph import MRSGraph
 from pyjs_graph import MRSGraph
 from neo4j import GraphDatabase
-from nx_graph import gen_graph
+
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -16,6 +18,27 @@ graphistry_graph = MRSGraph()
 
 @app.route('/')
 def index():
+    return render_template('log_uploader.html')
+
+
+@app.route('/uploader', methods=['POST'])
+def uploader():
+    if request.method == 'POST':
+        f = request.files['log_file']
+        filename = secure_filename(f.filename)
+        logs_path = os.getcwd() + '/logs'
+        if not os.path.exists(logs_path):
+            os.makedirs(logs_path)
+        final_path = logs_path + '/' + filename
+        f.save(final_path)        
+        
+        load_query = queries.load_generator(final_path, filename)
+
+        return load_query
+
+
+@app.route('/get_perspectives', methods=["GET"])
+def get_perspectives():
     '''
     Extract the perspectives saved in the event log 
     '''
@@ -31,7 +54,7 @@ def index():
                     if not ek in params:
                         params.append(ek)
         params.sort()
-    return render_template('perspectives.html', perspectives=params, p_size=len(params))
+    return render_template('perspectives_selector.html', perspectives=params, p_size=len(params))
 
 
 @app.route('/set_graph', methods=["POST"])
@@ -44,7 +67,7 @@ def graph():
     selected_perspectives = list(request.form.values())
     if "Message" in selected_perspectives:
         communication_perspective = True
-    return render_template('index.html', mission_abstraction=1, event_abstraction=1, communication=communication_perspective)
+    return render_template('ekg_gui.html', mission_abstraction=1, event_abstraction=1, communication=communication_perspective)
 
 
 @app.route("/get_graph", methods=["POST"])
@@ -67,10 +90,9 @@ def get_graph():
 
     resp = {'nodes': nodes, 'edges': edges}
 
-
     #gen_graph(nodes, edges)
-    
-    return render_template('index.html', mission_abstraction=mission_slider_val, event_abstraction=event_slider_val, communication=show_communication, response_data=resp)
+
+    return render_template('ekg_gui.html', mission_abstraction=mission_slider_val, event_abstraction=event_slider_val, communication=show_communication, response_data=resp)
 
 
 if __name__ == '__main__':

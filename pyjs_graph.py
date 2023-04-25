@@ -31,7 +31,7 @@ class MRSGraph:
         aggregation_perspectives = []
         if process_abstraction == 1:
             aggregation_perspectives = ['Activity', 'Actor']
-        if process_abstraction == 3:
+        elif process_abstraction == 3:
             aggregation_perspectives = ['Activity']
 
         res_query = queries.query_aggregation_generator(
@@ -62,26 +62,24 @@ class MRSGraph:
         self.edges = pd.DataFrame(results.data())
 
     def handle_communication(self):
+        '''
+        Firstly creates the Message entity
+        '''
         self.session.run("""
                         MATCH (e:Event) UNWIND e.Message AS msg
                         WITH DISTINCT msg, e.Payload as payload
                         MERGE (n:Entity:Message {ID:msg, EntityType:"Message", Payload:payload})
                           """)
         self.session.run("""
-                        MATCH (e:Event) UNWIND e.Message AS msg WITH e,msg
+                        MATCH (e:Event) UNWIND e.Message AS msg 
+                        WITH e, msg
                         MATCH (n:Entity:Message) WHERE msg = n.ID
                         MERGE (e)-[c:CORR]->(n)
                           """)
-        self.session.run("""
-                        MATCH (e1:Event)-[:CORR]->(n:Message)<-[:CORR]-(e2:Event)
-                        WHERE e1.Msg_Role = 'send' AND e2.Msg_Role = 'receive' AND e1.timestamp <= e2.timestamp
-                        MERGE (e1)-[comm:COMM {EntityType:n.EntityType, ID:n.ID}]->(e2)
-                          """)
-
-        res = self.session.run("""
-                        MATCH (e1:Event)-[c:COMM]->(e2:Event)
-                        RETURN e1.EventID as source, e2.EventID as destination, type(c) as edge_label
-                          """)
+        res = self.session.run(queries.NODE_COMM)
+        
+        if self.event_abstraction == 3:
+            res = self.session.run(queries.CLASS_COMM_QUERY)
         comm_edges = pd.DataFrame(res.data())
         self.edges = pd.concat([self.edges, comm_edges])
 
@@ -95,11 +93,8 @@ class MRSGraph:
         if communication:
             self.handle_communication()
 
-        self.edges = self.edges.rename(
-            columns={'destination': 'to', 'source': 'from', 'edge_label': 'label'})
-        
-        self.edges['color'] = self.edges['label'].apply(StyleEKG.set_edge_color)
-        
+        # association of colors useful for representing EKG
+        self.edges['color'] = self.edges['edge_label'].apply(StyleEKG.set_edge_color)
         
         if 'Actor' in self.nodes.columns:
             nodecolors = StyleEKG.set_nodes_color(self.nodes)

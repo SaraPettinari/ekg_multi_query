@@ -131,7 +131,7 @@ function draw(data) {
   var network = new vis.Network(container, data, options);
 }
 
-function provaNNN(data) {
+function generate_ekg(data) {
   nodes = []
   for (n in data.nodes) {
     //node_data.push({ id: in_data.nodes[n]['EventID'], properties: in_data.nodes[n] })
@@ -142,12 +142,14 @@ function provaNNN(data) {
   edges = []
   for (e in data.edges) {
     edge = data.edges[e]
-    edges.push({ data: { source: edge.from, target: edge.to, id: e, label: edge.label, color: edge.color } })
+    edge_label = edge.edge_label
+    edge_properties = edge.edge_properties
+    //"edge_weight": 1,   "CorrelationType": "Message",
+    edge_info = edge_properties.edge_weight + '(' + edge_properties.CorrelationType + ')\n:' + edge_label
+    edges.push({ data: { source: edge.source, target: edge.destination, id: e, label: edge_info, color: edge.color } })
   }
 
   elements = nodes.concat(edges)
-
-  //console.log(elements)
 
   var cy = cytoscape({
     container: document.getElementById('cyto'), // container to render in
@@ -177,10 +179,11 @@ function provaNNN(data) {
           'target-arrow-color': 'data(color)',
           'target-arrow-shape': 'triangle',
           //'curve-style': 'segments',
-          'curve-style': 'straight',
-          //'curve-style': 'unbundled-bezier',
+          // 'curve-style': 'straight',
+         'curve-style': 'unbundled-bezier',
           'text-background-opacity': 1,
           'text-background-color': '#ffffff',
+          'text-wrap': 'wrap',
         }
       }
     ],
@@ -188,7 +191,7 @@ function provaNNN(data) {
     layout: {
       name: 'dagre',
       directed: true,
-      spacingFactor: 1.5,
+      spacingFactor: 1.0,
       avoidOverlap: true,
       nodeDimensionsIncludeLabels: true,
       nodeSep: 50, // the separation between adjacent nodes in the same rank
