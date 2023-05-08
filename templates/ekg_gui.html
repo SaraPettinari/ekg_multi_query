@@ -22,7 +22,7 @@
         <form method="POST" action="get_graph">
             <h2>Mission Analysis Parameters</h2>
             <div class="row">
-                <label for="mission_slider">Choose mission level of abstraction:</label><br />
+                <label class="h4" for="mission_slider">Choose mission level of abstraction:</label>
                 <input type="range" min="1" max="3" value="{{ mission_abstraction }}" step="1" id="mission_slider"
                     list="mission_values" name="mission_slider" class="slider" />
 
@@ -34,7 +34,7 @@
             </div>
 
             <div class="row">
-                <label for="event_slider">Choose event level of abstraction:</label><br />
+                <label class="h4" for="event_slider">Choose event level of abstraction:</label>
                 <input type="range" min="1" max="4" value="{{ event_abstraction }}" step="1" id="event_slider"
                     list="event_values" name="event_slider" class="slider" />
 
@@ -50,9 +50,20 @@
             {% if communication %}
             <div class="row">
                 <label class="form-check-label" for="communication_link" name="communication_link">
-                    <input class="form-check-input" type="checkbox" id="communication_link" name="communication_link">
+                    <input class="form-check-input" type="checkbox" id="communication_link" name="communication_link" onclick="showOptions()">
                     Show Communication Link
                 </label>
+            </div>
+
+            <div class="row" id="msg_slider_div" style="display:none">
+                <label class="h4" for="msg_slider">Choose event message abstraction:</label>
+                <input type="range" min="1" max="2" value="{{ msg_abstraction }}" step="1" id="msg_slider"
+                    list="msg_values" name="msg_slider" class="slider" />
+
+                <datalist id="msg_values">
+                    <option value="1" label="Each event message is a node"></option>
+                    <option value="2" label="Same activities name and same message id aggregation"></option>
+                </datalist>
             </div>
             {% endif %}
 

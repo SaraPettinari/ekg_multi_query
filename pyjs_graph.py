@@ -6,6 +6,7 @@ import scripts.queries as queries
 import scripts.config as config
 import datetime
 
+
 class MRSGraph:
     def __init__(self):
         self.edges = []
@@ -16,18 +17,24 @@ class MRSGraph:
         self.session = self.driver.session()
 
     def set_properties(self):
+        self.session.run(queries.CHANGE_ENTITY_VISIBILITY)
+        self.session.run(queries.CLEAR_CLASSES)
+        relationship_type = ''
         type_id = ElementType.EVENT
         if self.event_abstraction == 3:
             self.aggregate_activities(self.process_abstraction)
             type_id = ElementType.CLASS
 
+        self.session.run(queries.GET_NODES, type=type_id)
+
         if self.process_abstraction == 1:
-            self.get_mrs_level_1(type_id)
+            relationship_type = self.get_mrs_level_1(type_id)
         elif self.process_abstraction == 3:
-            self.get_mrs_level_3(type_id)
+            relationship_type = self.get_mrs_level_3(type_id)
+            
+        return relationship_type
 
     def aggregate_activities(self, process_abstraction):
-        self.session.run(queries.CLEAR_CLASSES)
         aggregation_perspectives = []
         if process_abstraction == 1:
             aggregation_perspectives = ['Activity', 'Actor']
@@ -35,51 +42,58 @@ class MRSGraph:
             aggregation_perspectives = ['Activity']
 
         res_query = queries.query_aggregation_generator(
-            aggregation_perspectives, 'Activity')
+            aggregation_perspectives, ';'.join(aggregation_perspectives))
         self.session.run(res_query)
 
     def get_mrs_level_1(self, node_type):
-        res_nodes = self.session.run(queries.GET_NODES, type=node_type)
+        res_nodes = self.session.run(queries.GET_NODE_DATA)
 
         self.nodes = extract_nodes(res_nodes.data(), self.perspectives)
 
         if node_type == 'Class':
-            results = self.session.run(queries.CLASS_QUERY)
+            self.session.run(queries.CLASS_AGGREGATION, rel_type='DF', class_rel_type='DF_C')
+            return 'DF_C'
         else:
-            results = self.session.run(queries.NODE_DF)
-
-        self.edges = pd.DataFrame(results.data())
+            self.session.run(queries.NODE_DF)
+            return 'DF'
 
     def get_mrs_level_3(self, node_type):
-        res_nodes = self.session.run(queries.GET_NODES, type=node_type)
+        res_nodes = self.session.run(queries.GET_NODE_DATA)
         self.nodes = extract_nodes(res_nodes.data(), self.perspectives)
 
         if node_type == 'Class':
-            results = self.session.run(queries.CLASS_MRS_QUERY)
+            self.session.run(queries.CLASS_AGGREGATION, rel_type='DF_MRS', class_rel_type='DF_MRS_C')
+            return 'DF_MRS_C'
         else:
-            results = self.session.run(queries.NODE_DF_MRS)
+            self.session.run(queries.NODE_DF_MRS)
+            return 'DF_MRS'
 
-        self.edges = pd.DataFrame(results.data())
-
-    def handle_communication(self):
+    def handle_communication(self, message_aggregation):
         '''
         Firstly creates the Message entity
         '''
-        self.session.run("""
-                        MATCH (e:Event) UNWIND e.Message AS msg
-                        WITH DISTINCT msg, e.Payload as payload
-                        MERGE (n:Entity:Message {ID:msg, EntityType:"Message", Payload:payload})
-                          """)
-        self.session.run("""
-                        MATCH (e:Event) UNWIND e.Message AS msg 
-                        WITH e, msg
-                        MATCH (n:Entity:Message) WHERE msg = n.ID
-                        MERGE (e)-[c:CORR]->(n)
-                          """)
-        res = self.session.run(queries.NODE_COMM)
-        
+        self.session.run(queries.CREATE_MESSAGE_ENTITY)
+        self.session.run(queries.CORR_MESSAGE_ENTITY)
+        self.session.run(queries.SET_NODE_COMM)
+
         if self.event_abstraction == 3:
-            res = self.session.run(queries.CLASS_COMM_QUERY)
+            self.session.run(queries.CLASS_AGGREGATION, rel_type='COMM', class_rel_type='COMM_C')
+            res = self.session.run(
+                queries.GET_EDGE_DATA_TYPED, rel_type='COMM_C')
+
+        else:
+            '''if message_aggregation == 1:
+                self.session.run(queries.CREATE_MULTI_SENDER)
+                self.session.run(queries.MATCH_DF_MS_PRE)
+                self.session.run(queries.MATCH_DF_MS_POST)
+                self.session.run(queries.CHANGE_VISIBILITY, visibility=False)
+
+            elif message_aggregation == 0:
+                self.session.run(queries.CHANGE_VISIBILITY, visibility=True)'''
+
+            res = self.session.run(
+                queries.GET_EDGE_DATA_TYPED, rel_type='COMM')
+
         comm_edges = pd.DataFrame(res.data())
         self.edges = pd.concat([self.edges, comm_edges])
 
@@ -88,18 +102,24 @@ class MRSGraph:
         self.event_abstraction = int(event_abstraction)
 
         self.perspectives = perspectives
-        self.set_properties()
+        relationship_type = self.set_properties()
+        resp = self.session.run(queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
+        self.edges = pd.DataFrame(resp.data())
 
-        if communication:
-            self.handle_communication()
+        if communication[0]:
+            message_aggregation = -1
+            if communication[1] != None:
+                message_aggregation = int(communication[1])
+            self.handle_communication(message_aggregation)
 
         # association of colors useful for representing EKG
-        self.edges['color'] = self.edges['edge_label'].apply(StyleEKG.set_edge_color)
-        
+        self.edges['color'] = self.edges['edge_label'].apply(
+            StyleEKG.set_edge_color)
+
         if 'Actor' in self.nodes.columns:
             nodecolors = StyleEKG.set_nodes_color(self.nodes)
             self.nodes['color'] = self.nodes['Actor'].apply(nodecolors.get)
-        
+            
         return {'nodes': self.nodes, 'edges': self.edges}
 
 
@@ -110,9 +130,19 @@ def extract_nodes(nodes, perspectives):
 
     curr_nodes = pd.DataFrame(out_nodes)
 
-    if 'timestamp' in curr_nodes.columns:
-        curr_nodes['timestamp'] = curr_nodes['timestamp'].apply(
+    matching = [x for x in curr_nodes.columns if 'Time' in x or 'time' in x]
+
+    if len(matching) > 0:
+        col_time = matching[0]
+        curr_nodes[col_time] = curr_nodes[col_time].apply(
             neo_datetime_conversion)
+
+    if 'first_msg' in curr_nodes.columns:
+        curr_nodes['first_msg'] = curr_nodes['first_msg'].apply(
+            neo_datetime_conversion)
+        curr_nodes['last_msg'] = curr_nodes['last_msg'].apply(
+            neo_datetime_conversion)
+        curr_nodes = curr_nodes.dropna()
 
     # returns a dataset with only the perspectives of interest
     if all(item in perspectives for item in curr_nodes.columns):
@@ -126,10 +156,11 @@ def neo_datetime_conversion(timestamp):
     '''
     From Neo4j datetime to datetime
     '''
-    millis = int(timestamp.nanosecond/1000)
-    t = datetime.datetime(timestamp.year, timestamp.month, timestamp.day,
-                          timestamp.hour, timestamp.minute, timestamp.second, millis)
-    return t
+    if type(timestamp) != float:
+        millis = int(timestamp.nanosecond/1000)
+        t = datetime.datetime(timestamp.year, timestamp.month, timestamp.day,
+                              timestamp.hour, timestamp.minute, timestamp.second, millis)
+        return t
 
 
 if __name__ == '__main__':

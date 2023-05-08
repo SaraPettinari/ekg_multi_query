@@ -7,19 +7,26 @@ GET_NODES = """
                 SET e.visibility = true
                 RETURN e
             """
-            
-INIT_EVENT_NODES = """
-                MATCH (e:Event)
-                SET e.visibility = true
-                RETURN e
-            """
 
-GET_DATA = """
+GET_EDGE_DATA = """
             MATCH (e)-[rel]->(e1)
             WHERE e.visibility = true AND e1.visibility = true
-            RETURN e, e1, type(rel) as edge_label, properties(rel) as edge_properties
+            RETURN e.EventID as source, e1.EventID as destination, type(rel) as edge_label, properties(rel) as edge_properties
             """
 
+GET_EDGE_DATA_TYPED = """
+            MATCH (e)-[rel]->(e1)
+            WHERE e.visibility = true AND e1.visibility = true AND type(rel) = $rel_type
+            RETURN e.EventID as source, e1.EventID as destination, type(rel) as edge_label, properties(rel) as edge_properties
+            """
+            
+GET_NODE_DATA = """
+            MATCH (e)
+            WHERE e.visibility = true
+            RETURN e
+            """
+
+# DF relation between events from the same resource
 NODE_DF = """
             MATCH (n:Entity:Robot)<-[:CORR]-(e)
             WITH n, e AS nodes ORDER BY e.timestamp, ID(e)
@@ -27,10 +34,19 @@ NODE_DF = """
             UNWIND range(0, size(event_node_list)-2) AS i
             WITH n, event_node_list[i] AS e1, event_node_list[i+1] AS e2
             MERGE (e1)-[df:DF {CorrelationType:n.EntityType, ID:n.ID, edge_weight: 1}]->(e2)
-            RETURN e1.EventID as source, e2.EventID as destination, type(df) as edge_label, properties(df) as edge_properties
             """
 
+# DF relation without resource distinction
+NODE_DF_MRS = """
+                MATCH (e:Event)
+                WITH e AS nodes ORDER BY e.timestamp, ID(e)
+                WITH collect(nodes) AS event_node_list
+                UNWIND range(0, size(event_node_list)-2) AS i
+                WITH event_node_list[i] AS e1, event_node_list[i+1] AS e2
+                MERGE (e1)-[df:DF_MRS {CorrelationType:'Activity', edge_weight: 1}]->(e2)
+            """
 
+# Queries for handling communication
 CREATE_MESSAGE_ENTITY = """
                         MATCH (e:Event) UNWIND e.Message AS msg
                         WITH DISTINCT msg, e.Payload as payload
@@ -57,53 +73,20 @@ SET_NODE_COMM = """
             MERGE (e1)-[comm:COMM {CorrelationType:m.EntityType, ID:m.ID, edge_weight: 1}]->(e2)
             SET e1.visibility = true
             SET e2.visibility = true
-            RETURN e1.EventID as source, e2.EventID as destination, type(comm) as edge_label, properties(comm) as edge_properties
             """
             
-# aggregated resources
-NODE_DF_MRS = """
-                MATCH (e:Event)
-                WITH e AS nodes ORDER BY e.timestamp, ID(e)
-                WITH collect(nodes) AS event_node_list
-                UNWIND range(0, size(event_node_list)-2) AS i
-                WITH event_node_list[i] AS e1, event_node_list[i+1] AS e2
-                MERGE (e1)-[df:DF_MRS {CorrelationType:'Activity', edge_weight: 1}]->(e2)
-                RETURN e1.EventID as source, e2.EventID as destination, type(df) as edge_label, properties(df) as edge_properties
-            """
+
 
 # aggregated activities
-CLASS_QUERY = """
-                MATCH (c1 : Class) <-[:OBSERVED]- (e1 : Event) -[df:DF]-> (e2 : Event) -[:OBSERVED]-> (c2 : Class)
-                WHERE c1.Type = c2.Type
-                WITH df.CorrelationType as CType, c1, count(df) AS df_freq, c2
-                MERGE (c1) -[rel2:DF_C {CorrelationType:CType}]-> ( c2 ) ON CREATE SET rel2.edge_weight = df_freq
-                WITH c1, df_freq
-                MATCH (c1:Class) WHERE c1.Type = "Activity"
-                OPTIONAL MATCH (c1)-[df:DF_C]->(c2) WHERE c1.Type = c2.Type
-                RETURN c1.EventID as source, c2.EventID as destination, type(df) as edge_label, properties(df) as edge_properties
-                """
-
-CLASS_MRS_QUERY = """
-                    MATCH ( c1 : Class ) <-[:OBSERVED]- (e1 : Event) -[df:DF_MRS]-> (e2 : Event) -[:OBSERVED]-> (c2 : Class)
-                    WHERE c1.Type = c2.Type
-                    WITH df.CorrelationType as CType, c1, count(df) AS df_freq, c2
-                    MERGE ( c1 )-[rel2:DF_MRS_C {CorrelationType:CType}]-> ( c2 ) ON CREATE SET rel2.edge_weight=df_freq
-                    WITH c1, rel2.count as freq
-                    MATCH (c1:Class) WHERE c1.Type = "Activity"
-                    OPTIONAL MATCH (c1)-[df:DF_MRS_C]->(c2) WHERE c1.Type = c2.Type
-                    RETURN c1.EventID as source, c2.EventID as destination, type(df) as edge_label, properties(df) as edge_properties
-                """
-
-
-CLASS_COMM_QUERY = """
-                MATCH (c1 : Class) <-[:OBSERVED]- (e1 : Event) -[c_rel:COMM]-> (e2 : Event) -[:OBSERVED]-> (c2 : Class)
-                WHERE c1.Type = c2.Type
-                WITH c_rel.CorrelationType as CType, c1, count(c_rel) AS c_freq, c2
-                MERGE (c1) -[comm2:COMM_C {CorrelationType:CType}]-> ( c2 ) ON CREATE SET comm2.edge_weight = c_freq
-                WITH c1, c_freq
-                MATCH (c1:Class) WHERE c1.Type = "Activity"
-                OPTIONAL MATCH (c1)-[cc:COMM_C]->(c2) WHERE c1.Type = c2.Type
-                RETURN c1.EventID as source, c2.EventID as destination, type(cc) as edge_label, properties(cc) as edge_properties
+# @param :rel_type: matching relationship type
+# @param :class_rel_type: new relationship type
+CLASS_AGGREGATION = """
+                MATCH (c1 : Class) <-[:OBSERVED]- (e1 : Event) -[r]-> (e2 : Event) -[:OBSERVED]-> (c2 : Class)
+                WHERE c1.Type = c2.Type and type(r) = $rel_type
+                WITH r.CorrelationType as CType, c1, count(r) AS df_freq, c2
+                CALL apoc.merge.relationship(c1, $class_rel_type, {CorrelationType:CType, edge_weight: df_freq},{}, c2, {})
+                YIELD rel
+                RETURN rel
                 """
 
 CLEAR_CLASSES = """
@@ -111,13 +94,6 @@ CLEAR_CLASSES = """
                     DETACH DELETE c
                 """
 
-'''
-Alternative:
-
-
-MATCH (c:Class)
-SET c.visibility = false
-'''
 
 CREATE_MULTI_SENDER = """
                     MATCH (n:Event)
@@ -165,6 +141,7 @@ CHANGE_ENTITY_VISIBILITY = """
                     MATCH (n:Entity)
                     SET n.visible = false
                     """
+
 
 class ElementType():
     EVENT = 'Event'

@@ -227,3 +227,14 @@ function generate_ekg(data) {
    var blob = new Blob([svgContent], {type:"image/svg+xml;charset=utf-8"});
          saveAs(blob, "demo.svg");*/
 }
+
+
+function showOptions(){
+  var checkBox = document.getElementById("communication_link");
+  var slider = document.getElementById("msg_slider_div");
+  if (checkBox.checked == true){
+    slider.style.display = "block";
+  } else {
+     slider.style.display = "none";
+  }
+}

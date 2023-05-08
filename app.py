@@ -13,6 +13,7 @@ from neo4j import GraphDatabase
 app = Flask(__name__)
 Bootstrap(app)
 selected_perspectives = []
+show_communication = False
 graphistry_graph = MRSGraph()
 
 
@@ -75,23 +76,24 @@ def get_graph():
     '''
     Returns the event knowledge graph based on the slider data 
     '''
-    global selected_perspectives
-    show_communication = False
+    global selected_perspectives, show_communication
     mission_slider_val = request.form["mission_slider"]
     event_slider_val = request.form["event_slider"]
+    communication_slider_val = None
     if "communication_link" in request.form:
         show_communication = True
+        communication_slider_val = request.form["msg_slider"]
+        
 
     result = graphistry_graph.generate_graph(process_abstraction=mission_slider_val, event_abstraction=event_slider_val,
-                                             perspectives=selected_perspectives, communication=show_communication)
+                                             perspectives=selected_perspectives, communication=[show_communication, communication_slider_val])
 
     nodes = result['nodes'].to_dict(orient='records')
     edges = result['edges'].to_dict(orient='records')
 
     resp = {'nodes': nodes, 'edges': edges}
 
-    #gen_graph(nodes, edges)
-
+    #print(nodes)
     return render_template('ekg_gui.html', mission_abstraction=mission_slider_val, event_abstraction=event_slider_val, communication=show_communication, response_data=resp)
 
 

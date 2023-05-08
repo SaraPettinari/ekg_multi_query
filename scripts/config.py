@@ -7,5 +7,3 @@ NEO4J = {
     'auth': (NEO_USER, NEO_PASSWORD)
 }
 
-GRAPHISTRY_USER = 'sara.pettinari'
-GRAPHISTRY_PASSWORD = 'elDATO23'
