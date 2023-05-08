@@ -51,7 +51,7 @@ CREATE_MESSAGE_ENTITY = """
                         MATCH (e:Event) UNWIND e.Message AS msg
                         WITH DISTINCT msg, e.Payload as payload
                         MERGE (n:Entity:Message {ID:msg, EntityType:"Message", Payload:payload})
-                        SET n.visible = false
+                        SET n.visibility = false
                     """
 
 CORR_MESSAGE_ENTITY = """
@@ -101,17 +101,17 @@ CREATE_MULTI_SENDER = """
                     WHERE count > 1 and msg IS NOT NULL and rl = 'send'
                     WITH nodelist, head(nodelist) as first_el, last(nodelist) as last_el, size(nodelist) as n_rep
                     WITH nodelist, first_el, last_el, n_rep, duration.between(first_el.timestamp, last_el.timestamp) as dur
-                    MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.timestamp, last_msg: last_el.timestamp, visible: true})
+                    MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.timestamp, last_msg: last_el.timestamp})
                     SET s += properties(last_el)
-                    MERGE (s)-[:DF {repetitions: n_rep, total_duration: dur}]->(s)
+                    MERGE (s)-[:DF {edge_weight: n_rep, total_duration: dur, CorrelationType:'Actor'}]->(s)
                     FOREACH (node in nodelist | 
-                        MERGE (node)-[:COLLECT]->(s))
+                        MERGE (node)-[:OBSERVED]->(s))
                 """
 
 
 MATCH_DF_MS_POST = """
-                    MATCH (s:MultiSender)<-[:COLLECT]-(e1:Event)-[r]->(e2:Event)
-                    WHERE not ((e2)-[:COLLECT]->(:MultiSender))
+                    MATCH (s:MultiSender)<-[:OBSERVED]-(e1:Event)-[r]->(e2:Event)
+                    WHERE not ((e2)-[:OBSERVED]->(:MultiSender))
                     WITH COLLECT(r) AS rels, e1, e2, s, type(r) as rel_type
                     UNWIND rels as re
                     WITH  re, e1, e2, s
@@ -121,8 +121,8 @@ MATCH_DF_MS_POST = """
                     """
                     
 MATCH_DF_MS_PRE = """
-                    MATCH (e1:Event)-[r]->(e2:Event)-[:COLLECT]->(s:MultiSender)
-                    WHERE not ((e1)-[:COLLECT]->(:MultiSender))
+                    MATCH (e1:Event)-[r]->(e2:Event)-[:OBSERVED]->(s:MultiSender)
+                    WHERE not ((e1)-[:OBSERVED]->(:MultiSender))
                     WITH COLLECT(r) AS rels, e1, e2, s
                     UNWIND rels as re
                     WITH  re, e1, e2, s
@@ -132,14 +132,14 @@ MATCH_DF_MS_PRE = """
                     """
                     
 CHANGE_VISIBILITY = """
-                    MATCH (e:Event)-[:COLLECT]->(s:MultiSender)
-                    SET e.visible = $visibility
-                    SET s.visible = not e.visible
+                    MATCH (e:Event)-[:OBSERVED]->(s:MultiSender)
+                    SET e.visibility = $visibility
+                    SET s.visibility = not e.visibility
                     """
                     
 CHANGE_ENTITY_VISIBILITY = """
                     MATCH (n:Entity)
-                    SET n.visible = false
+                    SET n.visibility = false
                     """
 
 
@@ -167,20 +167,6 @@ def load_generator(path: str, log_name: str):
 
 
 
-
-'''
-Potential output:
-
-MATCH ( e : Event )
-WITH distinct e.Activity AS actName, e.Actor as actor
-MERGE ( c : Class { Name:actName, Type:"Activity;Actor", ID: actName, Actor: actor})
-
-MATCH ( c : Class ) WHERE c.Type = "Activity;Actor"
-MATCH ( e : Event ) WHERE c.Name = e.Activity AND c.Actor = e.Actor
-CREATE ( e ) -[:OBSERVED]-> ( c )
-SET c.visibility = true
-SET e.visibility = false
-'''
 def query_aggregation_generator(matching_perspectives: list, class_type: str):
     main_query = 'MATCH (e:Event)\n'
     with_query = 'WITH distinct '

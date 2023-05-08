@@ -180,7 +180,7 @@ function generate_ekg(data) {
           'target-arrow-shape': 'triangle',
           //'curve-style': 'segments',
           // 'curve-style': 'straight',
-         'curve-style': 'unbundled-bezier',
+          'curve-style': 'unbundled-bezier',
           'text-background-opacity': 1,
           'text-background-color': '#ffffff',
           'text-wrap': 'wrap',
@@ -229,12 +229,12 @@ function generate_ekg(data) {
 }
 
 
-function showOptions(){
+function showOptions() {
   var checkBox = document.getElementById("communication_link");
   var slider = document.getElementById("msg_slider_div");
-  if (checkBox.checked == true){
+  if (checkBox.checked == true) {
     slider.style.display = "block";
   } else {
-     slider.style.display = "none";
+    slider.style.display = "none";
   }
 }
