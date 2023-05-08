@@ -4,7 +4,20 @@ import pandas as pd
 GET_NODES = """
                 MATCH (e)
                 WHERE $type in LABELS(e)
+                SET e.visibility = true
                 RETURN e
+            """
+            
+INIT_EVENT_NODES = """
+                MATCH (e:Event)
+                SET e.visibility = true
+                RETURN e
+            """
+
+GET_DATA = """
+            MATCH (e)-[rel]->(e1)
+            WHERE e.visibility = true AND e1.visibility = true
+            RETURN e, e1, type(rel) as edge_label, properties(rel) as edge_properties
             """
 
 NODE_DF = """
@@ -18,7 +31,21 @@ NODE_DF = """
             """
 
 
-NODE_COMM = """
+CREATE_MESSAGE_ENTITY = """
+                        MATCH (e:Event) UNWIND e.Message AS msg
+                        WITH DISTINCT msg, e.Payload as payload
+                        MERGE (n:Entity:Message {ID:msg, EntityType:"Message", Payload:payload})
+                        SET n.visible = false
+                    """
+
+CORR_MESSAGE_ENTITY = """
+                        MATCH (e:Event) UNWIND e.Message AS msg 
+                        WITH e, msg
+                        MATCH (n:Entity:Message) WHERE msg = n.ID
+                        MERGE (e)-[c:CORR]->(n)
+                        """
+                        
+SET_NODE_COMM = """
             MATCH (e:Event)-[:CORR]->(m:Entity:Message) 
             WHERE e.Msg_Role = 'send' 
             UNWIND e.Message AS msg
@@ -28,9 +55,11 @@ NODE_COMM = """
             WHERE e2.Msg_Role = 'receive'
             WITH e2, last(event_list) as e1, m
             MERGE (e1)-[comm:COMM {CorrelationType:m.EntityType, ID:m.ID, edge_weight: 1}]->(e2)
+            SET e1.visibility = true
+            SET e2.visibility = true
             RETURN e1.EventID as source, e2.EventID as destination, type(comm) as edge_label, properties(comm) as edge_properties
             """
-
+            
 # aggregated resources
 NODE_DF_MRS = """
                 MATCH (e:Event)
@@ -76,12 +105,66 @@ CLASS_COMM_QUERY = """
                 OPTIONAL MATCH (c1)-[cc:COMM_C]->(c2) WHERE c1.Type = c2.Type
                 RETURN c1.EventID as source, c2.EventID as destination, type(cc) as edge_label, properties(cc) as edge_properties
                 """
-                
+
 CLEAR_CLASSES = """
                     MATCH (e:Event)-[:OBSERVED]-> (c:Class)
                     DETACH DELETE c
                 """
 
+'''
+Alternative:
+
+
+MATCH (c:Class)
+SET c.visibility = false
+'''
+
+CREATE_MULTI_SENDER = """
+                    MATCH (n:Event)
+                    WITH n.Message as msg, n.Msg_Role as rl, collect(n) as nodelist, count(*) as count
+                    WHERE count > 1 and msg IS NOT NULL and rl = 'send'
+                    WITH nodelist, head(nodelist) as first_el, last(nodelist) as last_el, size(nodelist) as n_rep
+                    WITH nodelist, first_el, last_el, n_rep, duration.between(first_el.timestamp, last_el.timestamp) as dur
+                    MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.timestamp, last_msg: last_el.timestamp, visible: true})
+                    SET s += properties(last_el)
+                    MERGE (s)-[:DF {repetitions: n_rep, total_duration: dur}]->(s)
+                    FOREACH (node in nodelist | 
+                        MERGE (node)-[:COLLECT]->(s))
+                """
+
+
+MATCH_DF_MS_POST = """
+                    MATCH (s:MultiSender)<-[:COLLECT]-(e1:Event)-[r]->(e2:Event)
+                    WHERE not ((e2)-[:COLLECT]->(:MultiSender))
+                    WITH COLLECT(r) AS rels, e1, e2, s, type(r) as rel_type
+                    UNWIND rels as re
+                    WITH  re, e1, e2, s
+                    CALL apoc.merge.relationship(s, type(re), {}, properties(re), e2, {})
+                    YIELD rel
+                    RETURN rel
+                    """
+                    
+MATCH_DF_MS_PRE = """
+                    MATCH (e1:Event)-[r]->(e2:Event)-[:COLLECT]->(s:MultiSender)
+                    WHERE not ((e1)-[:COLLECT]->(:MultiSender))
+                    WITH COLLECT(r) AS rels, e1, e2, s
+                    UNWIND rels as re
+                    WITH  re, e1, e2, s
+                    CALL apoc.merge.relationship(e1, type(re), properties(re),{}, s, {})
+                    YIELD rel
+                    RETURN rel
+                    """
+                    
+CHANGE_VISIBILITY = """
+                    MATCH (e:Event)-[:COLLECT]->(s:MultiSender)
+                    SET e.visible = $visibility
+                    SET s.visible = not e.visible
+                    """
+                    
+CHANGE_ENTITY_VISIBILITY = """
+                    MATCH (n:Entity)
+                    SET n.visible = false
+                    """
 
 class ElementType():
     EVENT = 'Event'
@@ -105,6 +188,22 @@ def load_generator(path: str, log_name: str):
     return load_query
 
 
+
+
+
+'''
+Potential output:
+
+MATCH ( e : Event )
+WITH distinct e.Activity AS actName, e.Actor as actor
+MERGE ( c : Class { Name:actName, Type:"Activity;Actor", ID: actName, Actor: actor})
+
+MATCH ( c : Class ) WHERE c.Type = "Activity;Actor"
+MATCH ( e : Event ) WHERE c.Name = e.Activity AND c.Actor = e.Actor
+CREATE ( e ) -[:OBSERVED]-> ( c )
+SET c.visibility = true
+SET e.visibility = false
+'''
 def query_aggregation_generator(matching_perspectives: list, class_type: str):
     main_query = 'MATCH (e:Event)\n'
     with_query = 'WITH distinct '
@@ -132,7 +231,7 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
 
     main_query += with_query + '\n' + class_creation + '\n' + 'WITH c' + '\n' + \
         match_class_type + '\n' + match_event_class + \
-        '\n' + 'MERGE (e) -[:OBSERVED]-> (c)'
+        '\n' + 'MERGE (e) -[:OBSERVED]-> (c) \n' + 'SET c.visibility = true \n SET e.visibility = false'
 
     # print(main_query)
     return main_query
