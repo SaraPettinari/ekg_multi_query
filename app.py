@@ -5,7 +5,6 @@ import json
 import os
 import scripts.queries as queries
 import scripts.config as config
-#from graph import MRSGraph
 from pyjs_graph import MRSGraph
 from neo4j import GraphDatabase
 
@@ -14,7 +13,7 @@ app = Flask(__name__)
 Bootstrap(app)
 selected_perspectives = []
 show_communication = False
-graphistry_graph = MRSGraph()
+ekg = MRSGraph()
 
 
 @app.route('/')
@@ -33,9 +32,37 @@ def uploader():
         final_path = logs_path + '/' + filename
         f.save(final_path)        
         
-        load_query = queries.load_generator(final_path, filename)
+        load_query = queries.load_mapping(final_path, filename)
+        
+       
+        return render_template('log_uploader.html', query_data=load_query)
+    
+@app.route('/data_uploader', methods=['POST'])
+def data_uploader():
+    if request.method == 'POST':
+        form_data = request.form
+        out_data = {}
+        entity_list = []
+        
+        for el in form_data.keys():
+            if 'entity' in el:
+                entity_name = el.split('_')[0]
+                entity_list.append(form_data[entity_name])
+            else:
+                out_data[el] = form_data[el]
+        
+        load_query = queries.load_generator(out_data)
 
-        return load_query
+        # uploads log data into neo4j db
+        ekg.load_data(load_query)
+        
+        # check if some entities needs to be created
+        if len(entity_list) > 0:
+            for entity in entity_list:
+                print('TO FIX')
+                #ekg.create_entity(entity)
+
+        return get_perspectives()
 
 
 @app.route('/get_perspectives', methods=["GET"])
@@ -85,7 +112,7 @@ def get_graph():
         communication_slider_val = request.form["msg_slider"]
         
 
-    result = graphistry_graph.generate_graph(process_abstraction=mission_slider_val, event_abstraction=event_slider_val,
+    result = ekg.generate_graph(process_abstraction=mission_slider_val, event_abstraction=event_slider_val,
                                              perspectives=selected_perspectives, communication=[show_communication, communication_slider_val])
 
     nodes = result['nodes'].to_dict(orient='records')

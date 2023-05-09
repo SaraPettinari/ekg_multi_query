@@ -17,6 +17,25 @@ class MRSGraph:
         self.driver = GraphDatabase.driver(**config.NEO4J)
         self.session = self.driver.session()
 
+    def load_data(self, load_query):
+        '''
+        Uploads log data into Neo4j DB
+        @parameter :load_query: query to execute
+        '''
+        self.session.run(load_query)
+
+        self.session.run(""" 
+                        MATCH (e:Event {Lifecycle: 'complete'})
+                        DELETE e
+                         """)
+
+    def create_entity(self, entity_name):
+        '''
+        Creates an entity into Neo4j DB
+        @parameter :entity_name: entity type
+        '''
+        self.session.run(queries.CREATE_TYPED_ENTITY, entity=entity_name)
+
     def init_ekg(self):
         '''
         Initializes the nodes of the Event Knowledge Graph
@@ -113,7 +132,6 @@ class MRSGraph:
         comm_edges = res.to_df()
         self.edges = pd.concat([self.edges, comm_edges])
 
-
     def generate_graph(self, process_abstraction, event_abstraction, perspectives, communication):
         '''
         Generates the dataframes with data related to EKG nodes and edges
@@ -133,7 +151,6 @@ class MRSGraph:
         resp = self.session.run(
             queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
         self.edges = pd.DataFrame(resp.data())
-        
 
         if communication[0]:
             message_aggregation = -1
@@ -148,6 +165,8 @@ class MRSGraph:
         if 'Actor' in self.nodes.columns:
             nodecolors = StyleEKG.set_nodes_color(self.nodes)
             self.nodes['color'] = self.nodes['Actor'].apply(nodecolors.get)
+
+        self.edges.to_csv('edges.csv', sep=';')
 
         return {'nodes': self.nodes, 'edges': self.edges}
 

@@ -21,13 +21,40 @@
                 <input type="submit" class="btn btn-outline-secondary" value="Upload" />
             </form>
         </div>
+
+        {% if query_data %}
+        <div>
+            <p>Check your parameters identifiers</p>
+            <form action="/data_uploader" method="POST" enctype="multipart/form-data">
+                {% for key, value in query_data.items() %}
+                {% if key == 'path' %}
+                <label for="{{ value }}" hidden> {{ key }} </label> <input type="text" id="{{ value }}" name="{{ key }}"
+                    value="{{ value }}" hidden>
+                {% else %}
+                <label for="{{ value }}"> {{ key }} </label> &rarr; <input type="text" id="{{ value }}" name="{{ key }}"
+                    value="{{ value }}">
+                <label for="{{ key }}_entity">Is it an entity?</label>    
+                <input class="form-check-input" type="checkbox" id="{{ key }}_entity" name="{{ key }}_entity">
+                {% endif %}
+                <br>
+
+                {% endfor %}
+
+                <div class="row">
+                    <input type="submit" class="btn btn-outline-primary" value="Upload" />
+                </div>
+            </form>
+        </div>
+
+        {% else %}
         <div class="row">
             <label>
                 Is your DB ready?
                 <a class="btn btn-primary" href="{{ url_for('get_perspectives') }}">Click Here</a>
             </label>
-
         </div>
+        {% endif %}
+
     </div>
 
 </body>

@@ -19,7 +19,7 @@ GET_EDGE_DATA_TYPED = """
             WHERE e.visibility = true AND e1.visibility = true AND type(rel) = $rel_type
             RETURN e.EventID as source, e1.EventID as destination, type(rel) as edge_label, properties(rel) as edge_properties
             """
-            
+
 GET_NODE_DATA = """
             MATCH (e)
             WHERE e.visibility = true
@@ -46,6 +46,20 @@ NODE_DF_MRS = """
                 MERGE (e1)-[df:DF_MRS {CorrelationType:'Activity', edge_weight: 1}]->(e2)
             """
 
+CREATE_TYPED_ENTITY = """
+                        MATCH (e:Event) 
+                        UNWIND e[$entity] AS entity_name
+                        WITH DISTINCT entity_name
+                        CALL apoc.create.node(['Entity:' + $entity],  {ID:entity_name, EntityType:$entity})
+                        YIELD node
+                        WITH entity_name
+                        MATCH (e:Event)
+                        WITH e, entity_name
+                        MATCH (n:Entity) 
+                        WHERE n.ID = entity_name AND n.EntityType = $entity
+                        MERGE (e)-[c:CORR]->(n)
+                    """
+
 # Queries for handling communication
 CREATE_MESSAGE_ENTITY = """
                         MATCH (e:Event) UNWIND e.Message AS msg
@@ -60,7 +74,7 @@ CORR_MESSAGE_ENTITY = """
                         MATCH (n:Entity:Message) WHERE msg = n.ID
                         MERGE (e)-[c:CORR]->(n)
                         """
-                        
+
 SET_NODE_COMM = """
             MATCH (e:Event)-[:CORR]->(m:Entity:Message) 
             WHERE e.Msg_Role = 'send' 
@@ -74,7 +88,6 @@ SET_NODE_COMM = """
             SET e1.visibility = true
             SET e2.visibility = true
             """
-            
 
 
 # aggregated activities
@@ -119,7 +132,7 @@ MATCH_DF_MS_POST = """
                     YIELD rel
                     RETURN rel
                     """
-                    
+
 MATCH_DF_MS_PRE = """
                     MATCH (e1:Event)-[r]->(e2:Event)-[:OBSERVED]->(s:MultiSender)
                     WHERE not ((e1)-[:OBSERVED]->(:MultiSender))
@@ -130,13 +143,13 @@ MATCH_DF_MS_PRE = """
                     YIELD rel
                     RETURN rel
                     """
-                    
+
 CHANGE_VISIBILITY = """
                     MATCH (e:Event)-[:OBSERVED]->(s:MultiSender)
                     SET e.visibility = $visibility
                     SET s.visibility = not e.visibility
                     """
-                    
+
 CHANGE_ENTITY_VISIBILITY = """
                     MATCH (n:Entity)
                     SET n.visibility = false
@@ -148,23 +161,41 @@ class ElementType():
     CLASS = 'Class'
 
 
-def load_generator(path: str, log_name: str):
+def load_mapping(path: str, log_name: str):
     log_name = log_name.split('.')[0]
     df = pd.read_csv(path)
     column_names = list(df.columns)
     path = path.replace('\\', '/')
-    data_list = ''
+    data_list = {}
+    data_list['path'] = path
+    data_list['log_name'] = log_name
     for col_index in column_names:
-        if 'time' in col_index:
+        data_list[col_index] = col_index.title()
+
+    return data_list
+
+
+def load_generator(input_data: dict):
+    data_list = ''
+    path = input_data.pop('path')
+    log_name = input_data.pop('log_name')
+    for data in input_data.keys():
+        if 'time' in data:
             data_list += ', {}: datetime(line.{})'.format(
-                col_index.title(), col_index)
+                input_data[data], data)
         else:
-            data_list += ', {}: line.{}'.format(col_index.title(), col_index)
+            data_list += ', {}: line.{}'.format(input_data[data], data)
 
     load_query = f'LOAD CSV WITH HEADERS FROM "file:///{path}" as line CREATE (e:Event {{Log: "{log_name}" {data_list} }})'
+
+    data = data_list.split(', ')
+    data.pop(0)  # the first occurrence is empty
+    data_dict = {}
+    for el in data:
+        res = el.split(': ')
+        data_dict[res[0]] = res[1]
+
     return load_query
-
-
 
 
 def query_aggregation_generator(matching_perspectives: list, class_type: str):
@@ -194,7 +225,8 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
 
     main_query += with_query + '\n' + class_creation + '\n' + 'WITH c' + '\n' + \
         match_class_type + '\n' + match_event_class + \
-        '\n' + 'MERGE (e) -[:OBSERVED]-> (c) \n' + 'SET c.visibility = true \n SET e.visibility = false'
+        '\n' + 'MERGE (e) -[:OBSERVED]-> (c) \n' + \
+        'SET c.visibility = true \n SET e.visibility = false'
 
     # print(main_query)
     return main_query
