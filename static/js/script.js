@@ -178,12 +178,16 @@ function generate_ekg(data) {
           'line-color': 'data(color)',
           'target-arrow-color': 'data(color)',
           'target-arrow-shape': 'triangle',
-          //'curve-style': 'segments',
+          'curve-style': 'segments',
           // 'curve-style': 'straight',
-          'curve-style': 'unbundled-bezier',
+          //'curve-style': 'unbundled-bezier',
           'text-background-opacity': 1,
           'text-background-color': '#ffffff',
           'text-wrap': 'wrap',
+          'loop-sweep': '-45deg',
+          'control-point-step-size': 100,
+          'segment-distances': "50 -50 20",
+
         }
       }
     ],
@@ -194,38 +198,18 @@ function generate_ekg(data) {
       spacingFactor: 1.0,
       avoidOverlap: true,
       nodeDimensionsIncludeLabels: true,
-      nodeSep: 50, // the separation between adjacent nodes in the same rank
-      edgeSep: 50, // the separation between adjacent edges in the same rank
+      multigraph: true,
+      nodeSep: 150, // the separation between adjacent nodes in the same rank
+      edgeSep: 60, // the separation between adjacent edges in the same rank
       rankSep: 150, // the separation between each rank in the layout
-      rankDir: 'TB', // 'TB' for top to bottom flow, 'LR' for left to right,
-
-      /*    name: 'elk',
-          nodeDimensionsIncludeLabels: true,
-          fit: true,
-          padding: 20,
-          elk: {
-            'algorithm': 'layered',
-            'elk.direction': 'RIGHT',
-            'elk.crossingMinimization': true,
-            'elk.spacing.edgeNode': 50,
-            'elk.spacing.edgeEdge': 50,
-            'elk.spacing.nodeNode': 30,
-            'elk.layered.spacing.nodeNodeBetweenLayers': 60,
-            'elk.layered.layering.strategy': 'DF_MODEL_ORDER',
-            'elk.layered.spacing.edgeNodeBetweenLayers': 40,
-            'elk.edgeRouting': 'POLYLINE',
-            'elk.edgeLabels.inline': true,
-            'elk.partitioning.activate': true,
-    
-          },*/
+      rankDir: 'LR', // 'TB' for top to bottom flow, 'LR' for left to right,
     }
 
   });
 
-  // TODO add button for saving svg
-  /* var svgContent = cy.svg({full: true})
-   var blob = new Blob([svgContent], {type:"image/svg+xml;charset=utf-8"});
-         saveAs(blob, "demo.svg");*/
+  var svgContent = cy.svg({ full: true })
+  var blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+  saveAs(blob, "demo.svg");
 }
 
 
@@ -236,5 +220,21 @@ function showOptions() {
     slider.style.display = "block";
   } else {
     slider.style.display = "none";
+  }
+}
+
+function showNav() {
+  var x = document.getElementById("sliders");
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
+  }
+
+  var x = document.getElementById("analysis");
+  if (x.style.display === "none") {
+    x.style.display = "block";
+  } else {
+    x.style.display = "none";
   }
 }

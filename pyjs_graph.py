@@ -154,8 +154,8 @@ class MRSGraph:
 
         if communication[0]:
             message_aggregation = -1
-            if communication[1] != None:
-                message_aggregation = int(communication[1])
+            #if communication[1] != None:
+            #    message_aggregation = int(communication[1])
             self.handle_communication(message_aggregation)
 
         # association of colors useful for representing EKG

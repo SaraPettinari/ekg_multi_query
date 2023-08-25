@@ -19,59 +19,118 @@
 <body>
     <!-- SLIDERS-->
     <div class="container">
-        <form method="POST" action="get_graph">
-            <h2>Mission Analysis Parameters</h2>
-            <div class="row">
-                <label class="h4" for="mission_slider">Choose mission level of abstraction:</label>
-                <input type="range" min="1" max="3" value="{{ mission_abstraction }}" step="1" id="mission_slider"
-                    list="mission_values" name="mission_slider" class="slider" />
+        <hr class="hr" />
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary justify-content-center">
+            <h1 class="navbar-brand">Multi-Query Aggregation</h1>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!--
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item active">
+                        <a class="nav-link" onclick="showNav()">Sliders</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showNav()">Analysis</a>
+                    </li>
+                </ul>
+            </div>-->
+        </nav>
+        <hr class="hr" />
+        <div class="row" id="sliders">
 
-                <datalist id="mission_values">
-                    <option value="1" label="Each robot is a process"></option>
-                    <option value="2" label="Heterogeneous robots are a process"></option>
-                    <option value="3" label="MRS is a process"></option>
-                </datalist>
-            </div>
+            <form method="POST" action="get_graph">
+                <div class="row">
+                    <div class="col">
+                        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                            <h1 class="navbar-brand">Node Aggregation</h1>
+                        </nav>
+                        <div class="row">
+                            <label class="p" for="activity_slider">Activity:</label>
+                            <input type="range" min="1" max="5" value="{{ activity_abstraction }}" step="1"
+                                id="activity_slider" list="event_values" name="activity_slider" class="slider" />
 
-            <div class="row">
-                <label class="h4" for="event_slider">Choose event level of abstraction:</label>
-                <input type="range" min="1" max="4" value="{{ event_abstraction }}" step="1" id="event_slider"
-                    list="event_values" name="event_slider" class="slider" />
+                            <datalist id="event_values">
+                                <option value="1" label="Identity"></option>
+                                <option value="2" label="Predecessor Identity"></option>
+                                <option value="3" label="Successor Identity"></option>
+                                <option value="4" label="Neighbors Identity"></option>
+                                <option value="5" label="Event Identity"></option>
+                            </datalist>
+                        </div>
 
-                <datalist id="event_values">
-                    <option value="1" label="Each event is a node"></option>
-                    <option value="2" label="Same activities name and neighbours aggregation"></option>
-                    <option value="3" label="Same activities name aggregation"></option>
-                    <option value="4" label="Clustering aggregation"></option>
+                        <div class="row">
+                            <label class="p" for="resource_slider">Robot:</label>
+                            <input type="range" min="1" max="3" value="{{ resource_abstraction }}" step="1"
+                                id="resource_slider" list="resource_values" name="resource_slider" class="slider" />
 
-                </datalist>
-            </div>
+                            <datalist id="resource_values">
+                                <option value="1" label="Identity"></option>
+                                <option value="2" label="Type"></option>
+                                <option value="3" label="None"></option>
+                            </datalist>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                            <h1 class="navbar-brand">Edge Aggregation</h1>
+                        </nav>
+                        <div class="row">
+                            <label class="p" for="edge_msg">Message:</label>
+                            <input type="range" min="1" max="2" value="1" step="1"
+                                id="edge_msg" list="edge_msg_val" name="edge_msg" class="slider" />
 
-            {% if communication %}
-            <div class="row">
-                <label class="form-check-label" for="communication_link" name="communication_link">
-                    <input class="form-check-input" type="checkbox" id="communication_link" name="communication_link" onclick="showOptions()">
-                    Show Communication Link
-                </label>
-            </div>
+                            <datalist id="edge_msg_val">
+                                <option value="1" label="Show"></option>
+                                <option value="2" label="Hide"></option>
+                            </datalist>
+                        </div>
+                        <div class="row">
+                            <label class="p" for="edge_robot">Robot:</label>
+                            <input type="range" min="1" max="2" value="1" step="1"
+                                id="edge_robot" list="edge_rob_val" name="edge_robot" class="slider" />
 
-            <div class="row" id="msg_slider_div" style="display:none">
-                <label class="h4" for="msg_slider">Choose event message abstraction:</label>
-                <input type="range" min="1" max="2" value="{{ msg_abstraction }}" step="1" id="msg_slider"
-                    list="msg_values" name="msg_slider" class="slider" />
+                            <datalist id="edge_rob_val">
+                                <option value="1" label="Show"></option>
+                                <option value="2" label="Hide"></option>
+                            </datalist>
+                        </div>
+                    </div>
+                </div>
+                <!--              {% if communication %}
+                <div class="row">
+                    <label class="form-check-label" for="communication_link" name="communication_link">
+                        <input class="form-check-input" type="checkbox" id="communication_link"
+                            name="communication_link" onclick="showOptions()">
+                        Show Communication Link
+                    </label>
+                </div>
 
-                <datalist id="msg_values">
-                    <option value="1" label="Each event message is a node"></option>
-                    <option value="2" label="Same activities name and same message id aggregation"></option>
-                </datalist>
-            </div>
-            {% endif %}
+                <div class="row" id="msg_slider_div" style="display:none">
+                    <label class="h4" for="msg_slider">Choose event message abstraction:</label>
+                    <input type="range" min="1" max="2" value="{{ msg_abstraction }}" step="1" id="msg_slider"
+                        list="msg_values" name="msg_slider" class="slider" />
 
-            <div class="row">
-                <input type="submit" class="btn btn-primary" value="Show Graph" />
-            </div>
+                    <datalist id="msg_values">
+                        <option value="1" label="Each event message is a node"></option>
+                        <option value="2" label="Same activities name and same message id aggregation"></option>
+                    </datalist>
+                </div>
+                {% endif %}
+-->
+                <div class="row">
+                    <input type="submit" class="btn btn-primary" value="Show Graph" />
+                </div>
+            </form>
+
+        </div>
+        <div class="row" id="analysis">
+        </div>
 
 
+        <div id="ekg">
             <!--           <div class="row" id="networkx"></div>-->
             <div class="row frame-graph" id="cyto"></div>
 
@@ -79,7 +138,7 @@
                 const response_data = {{ response_data|default ("") | tojson }}
                 generate_ekg(response_data)
             </script>
-        </form>
+        </div>
     </div>
 
 </body>

@@ -13,27 +13,52 @@
 <body>
     <!-- Perspectives choice -->
     <div class="container">
+        <hr class="hr" />
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <h1 class="navbar-brand">Data Selector</h1>
+        </nav>
+        <hr class="hr" />
+
         <div class="row">
-            <h2>Select Perspectives</h2>
             <form method="POST" action="set_graph">
-                <div class="form-check">
-                    {% for i in range(p_size) %}
-                    <label class="form-check-label" for="val{{ i+1 }}" name="val{{ i+1 }}">
-                        <input class="form-check-input" type="checkbox" id="val{{ i+1 }}" name="val{{ i+1 }}"
-                            value="{{ perspectives[i] }}">
-                        {{ perspectives[i] }}
-                    </label>
-                    <br>
-                    {% endfor %}
+                <div class="col">
+                    <nav class="navbar navbar-light bg-light">
+                        <h2 class="navbar-brand">Select Dimensions</h2>
+                    </nav>
+
+                    <div class="form-check">
+                        {% for i in range(p_size) %}
+                        <label class="form-check-label" for="val{{ i+1 }}" name="val{{ i+1 }}">
+                            <input class="form-check-input" type="checkbox" id="val{{ i+1 }}" name="val{{ i+1 }}"
+                                value="{{ perspectives[i] }}">
+                            {{ perspectives[i] }}
+                        </label>
+                        <br>
+                        {% endfor %}
+                    </div>
                 </div>
-        </div>
-        <div class="row">
-            <input type="submit" class="btn btn-primary" value="OK" />
-        </div>
+                <div class="col">
+                    <nav class="navbar navbar-light bg-light">
+                        <h2 class="navbar-brand">Select Unique Event Value Identifier</h2>
+                    </nav>
+                    <div class="form-check">
+                        {% for i in range(p_size) %}
+                        <label class="form-check-label" for="id_val{{ i+1 }}" name="id_val{{ i+1 }}">
+                            <input class="form-check-input" type="radio" id="id_val{{ i+1 }}" name="id_val"
+                                value="key: {{ perspectives[i] }}">
+                            {{ perspectives[i] }}
+                        </label>
+                        <br>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="row">
+                    <input type="submit" class="btn btn-primary" value="OK" />
+                </div>
 
-        </form>
+            </form>
+        </div>
     </div>
-
 </body>
 
 </html>

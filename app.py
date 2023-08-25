@@ -51,7 +51,10 @@ def data_uploader():
             else:
                 out_data[el] = form_data[el]
         
+        print(out_data)
         load_query = queries.load_generator(out_data)
+        
+        print(load_query)
 
         # uploads log data into neo4j db
         ekg.load_data(load_query)
@@ -88,14 +91,16 @@ def get_perspectives():
 @app.route('/set_graph', methods=["POST"])
 def graph():
     '''
-    Returns the slider interface (based on the chosen perspectives [TODO]) 
+    Returns the slider interface (based on the chosen perspectives) 
     '''
     communication_perspective = False
     global selected_perspectives
     selected_perspectives = list(request.form.values())
-    if "Message" in selected_perspectives:
-        communication_perspective = True
-    return render_template('ekg_gui.html', mission_abstraction=1, event_abstraction=1, communication=communication_perspective)
+    #ho bisogno di distinguere local e global [match (e:Event) where e.$perspective is null return e]
+    unique_eid = list(filter(lambda x : 'key' in  x, selected_perspectives))[0].replace('key: ', '')
+    #if "Message" in selected_perspectives:
+    #    communication_perspective = True
+    return render_template('ekg_gui.html', activity_abstraction=1, resource_abstraction=1, activity_id = unique_eid)
 
 
 @app.route("/get_graph", methods=["POST"])
@@ -104,16 +109,18 @@ def get_graph():
     Returns the event knowledge graph based on the slider data 
     '''
     global selected_perspectives, show_communication
-    mission_slider_val = request.form["mission_slider"]
-    event_slider_val = request.form["event_slider"]
-    communication_slider_val = None
-    if "communication_link" in request.form:
+    resource_slider_val = request.form["resource_slider"]
+    activity_slider_val = request.form["activity_slider"]
+    communication_slider_val = request.form["edge_msg"]
+    resource_edge_val = request.form["edge_robot"]
+    
+    if int(communication_slider_val) == 1:
         show_communication = True
-        communication_slider_val = request.form["msg_slider"]
+        #communication_slider_val = request.form["msg_slider"]
         
 
-    result = ekg.generate_graph(process_abstraction=mission_slider_val, event_abstraction=event_slider_val,
-                                             perspectives=selected_perspectives, communication=[show_communication, communication_slider_val])
+    result = ekg.generate_graph(process_abstraction=resource_slider_val, event_abstraction=activity_slider_val,
+                                             perspectives=selected_perspectives, communication=[show_communication])
 
     nodes = result['nodes'].to_dict(orient='records')
     edges = result['edges'].to_dict(orient='records')
@@ -121,7 +128,7 @@ def get_graph():
     resp = {'nodes': nodes, 'edges': edges}
 
     #print(nodes)
-    return render_template('ekg_gui.html', mission_abstraction=mission_slider_val, event_abstraction=event_slider_val, communication=show_communication, response_data=resp)
+    return render_template('ekg_gui.html', ev_id_abstraction=resource_slider_val, event_abstraction=activity_slider_val, communication=show_communication, response_data=resp)
 
 
 if __name__ == '__main__':

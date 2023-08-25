@@ -195,6 +195,7 @@ def load_generator(input_data: dict):
         res = el.split(': ')
         data_dict[res[0]] = res[1]
 
+    print(load_query)
     return load_query
 
 
