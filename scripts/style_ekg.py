@@ -21,7 +21,7 @@ class StyleEKG:
     def set_nodes_color(nodes: pd.DataFrame):
         actor_color = {}
         i = 0
-        actors = nodes['Actor'].unique()
+        actors = nodes['Robot'].unique()
         for actor in actors:
             actor_color[actor] = node_color_list[i]
             i += 1

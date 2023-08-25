@@ -145,11 +145,16 @@ function generate_ekg(data) {
     edge_label = edge.edge_label
     edge_properties = edge.edge_properties
     //"edge_weight": 1,   "CorrelationType": "Message",
-    edge_info = edge_properties.edge_weight + '(' + edge_properties.CorrelationType + ')\n:' + edge_label
-    edges.push({ data: { source: edge.source, target: edge.destination, id: e, label: edge_info, color: edge.color } })
+    edge_weight = edge_properties.edge_weight
+    if(edge_weight > 1){
+      edge_weight = edge_weight/2
+    }
+    edge_info = edge_weight + '(' + edge_properties.CorrelationType + ')\n:' + edge_label
+    edges.push({ data: { source: edge.source, target: edge.destination, id: e, label: edge_info, color: edge.color, weight: edge_weight } })
   }
 
   elements = nodes.concat(edges)
+
 
   var cy = cytoscape({
     container: document.getElementById('cyto'), // container to render in
@@ -174,7 +179,7 @@ function generate_ekg(data) {
         selector: 'edge',
         style: {
           'label': 'data(label)',
-          'width': 1,
+          'width': 'data(weight)' || 1,
           'line-color': 'data(color)',
           'target-arrow-color': 'data(color)',
           'target-arrow-shape': 'triangle',
@@ -207,9 +212,10 @@ function generate_ekg(data) {
 
   });
 
+ /* 
   var svgContent = cy.svg({ full: true })
   var blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-  saveAs(blob, "demo.svg");
+  saveAs(blob, "demo.svg");*/
 }
 
 

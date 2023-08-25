@@ -45,29 +45,29 @@ class MRSGraph:
         self.session.run(queries.CHANGE_ENTITY_VISIBILITY)
         self.session.run(queries.CLEAR_CLASSES)
         type_id = ElementType.EVENT
-        if self.event_abstraction == 3:
-            self.aggregate_activities(self.process_abstraction)
+        if self.activity_abstraction == 1:
+            self.aggregate_activities(self.robot_abstraction)
             type_id = ElementType.CLASS
 
         self.session.run(queries.GET_NODES, type=type_id)
 
         relationship = 'DF'
 
-        if self.process_abstraction == 3:
+        if self.robot_abstraction == 3:
             relationship = relationship + '_MRS'
 
         relationship_out = self.event_rel_extraction(type_id, relationship)
         return relationship_out
 
-    def aggregate_activities(self, process_abstraction):
+    def aggregate_activities(self, robot_abstraction):
         '''
         Creates aggregation classes based on the level of abstraction given as input
-        @parameter :process_abstraction: defines the abstraction level chosen by the user
+        @parameter :robot_abstraction: defines the abstraction level chosen by the user
         '''
         aggregation_perspectives = []
-        if process_abstraction == 1:
-            aggregation_perspectives = ['Activity', 'Actor']
-        elif process_abstraction == 3:
+        if robot_abstraction == 1:
+            aggregation_perspectives = ['Activity', 'Robot']
+        elif robot_abstraction == 3:
             aggregation_perspectives = ['Activity']
 
         res_query = queries.query_aggregation_generator(
@@ -102,7 +102,7 @@ class MRSGraph:
         self.session.run(queries.CORR_MESSAGE_ENTITY)
         self.session.run(queries.SET_NODE_COMM)
 
-        if self.event_abstraction == 3:
+        if self.activity_abstraction == 3:
             self.session.run(queries.CLASS_AGGREGATION,
                              rel_type='COMM', class_rel_type='COMM_C')
             res = self.session.run(
@@ -132,19 +132,19 @@ class MRSGraph:
         comm_edges = res.to_df()
         self.edges = pd.concat([self.edges, comm_edges])
 
-    def generate_graph(self, process_abstraction, event_abstraction, perspectives, communication):
+    def generate_graph(self, robot_abstraction, activity_abstraction, perspectives, communication):
         '''
         Generates the dataframes with data related to EKG nodes and edges
-        @parameter :process_abstraction: process abstraction level chosen by the user
-        @parameter :event_abstraction: event abstraction level chosen by the user
+        @parameter :robot_abstraction: process abstraction level chosen by the user
+        @parameter :activity_abstraction: event abstraction level chosen by the user
         @parameter :perspectives: desired perspectives chosen by the user
         @parameter :communication: desired communication details
 
         @return a dictionary with nodes and edges
 
         '''
-        self.process_abstraction = int(process_abstraction)
-        self.event_abstraction = int(event_abstraction)
+        self.robot_abstraction = int(robot_abstraction)
+        self.activity_abstraction = int(activity_abstraction)
 
         self.perspectives = perspectives
         relationship_type = self.init_ekg()
@@ -162,9 +162,9 @@ class MRSGraph:
         self.edges['color'] = self.edges['edge_label'].apply(
             StyleEKG.set_edge_color)
 
-        if 'Actor' in self.nodes.columns:
+        if 'Robot' in self.nodes.columns:
             nodecolors = StyleEKG.set_nodes_color(self.nodes)
-            self.nodes['color'] = self.nodes['Actor'].apply(nodecolors.get)
+            self.nodes['color'] = self.nodes['Robot'].apply(nodecolors.get)
 
         self.edges.to_csv('edges.csv', sep=';')
 
@@ -218,10 +218,10 @@ def neo_datetime_conversion(timestamp):
 
 
 if __name__ == '__main__':
-    process_abstraction = input('Select process abstraction level:')
-    event_abstraction = input('Select event abstraction level:')
-    perspectives = ['EventID', 'Activity', 'Actor', 'timestamp']
+    robot_abstraction = input('Select process abstraction level:')
+    activity_abstraction = input('Select event abstraction level:')
+    perspectives = ['EventID', 'Activity', 'Robot', 'timestamp']
 
     mrsg = MRSGraph().generate_graph(
-        process_abstraction, event_abstraction, perspectives, communication=False)
+        robot_abstraction, activity_abstraction, perspectives, communication=False)
     print(mrsg)

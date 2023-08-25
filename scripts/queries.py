@@ -29,7 +29,7 @@ GET_NODE_DATA = """
 # DF relation between events from the same resource
 NODE_DF = """
             MATCH (n:Entity:Robot)<-[:CORR]-(e)
-            WITH n, e AS nodes ORDER BY e.timestamp, ID(e)
+            WITH n, e AS nodes ORDER BY e.Time, ID(e)
             WITH n, collect(nodes) AS event_node_list
             UNWIND range(0, size(event_node_list)-2) AS i
             WITH n, event_node_list[i] AS e1, event_node_list[i+1] AS e2
@@ -39,7 +39,7 @@ NODE_DF = """
 # DF relation without resource distinction
 NODE_DF_MRS = """
                 MATCH (e:Event)
-                WITH e AS nodes ORDER BY e.timestamp, ID(e)
+                WITH e AS nodes ORDER BY e.Time, ID(e)
                 WITH collect(nodes) AS event_node_list
                 UNWIND range(0, size(event_node_list)-2) AS i
                 WITH event_node_list[i] AS e1, event_node_list[i+1] AS e2
@@ -79,7 +79,7 @@ SET_NODE_COMM = """
             MATCH (e:Event)-[:CORR]->(m:Entity:Message) 
             WHERE e.Msg_Role = 'send' 
             UNWIND e.Message AS msg
-            WITH distinct msg, m, e as nodes ORDER BY e.timestamp
+            WITH distinct msg, m, e as nodes ORDER BY e.Time
             WITH collect(nodes) as event_list, m
             MATCH (e2:Event)-[:CORR]->(m) 
             WHERE e2.Msg_Role = 'receive'
@@ -116,7 +116,7 @@ CREATE_MULTI_SENDER = """
                     WITH nodelist, first_el, last_el, n_rep, duration.between(first_el.timestamp, last_el.timestamp) as dur
                     MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.timestamp, last_msg: last_el.timestamp})
                     SET s += properties(last_el)
-                    MERGE (s)-[:DF {edge_weight: n_rep, total_duration: dur, CorrelationType:'Actor'}]->(s)
+                    MERGE (s)-[:DF {edge_weight: n_rep, total_duration: dur, CorrelationType:'Robot'}]->(s)
                     FOREACH (node in nodelist | 
                         MERGE (node)-[:OBSERVED]->(s))
                 """
