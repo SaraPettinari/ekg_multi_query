@@ -10,9 +10,9 @@ function plot_graph(in_data) {
   const g = new dagreD3.graphlib.Graph({ multigraph: true }).setGraph({ rankdir: 'LR' })
 
   for (n in in_data.nodes) {
-    //node_data.push({ id: in_data.nodes[n]['EventID'], properties: in_data.nodes[n] })
+    //node_data.push({ id: in_data.nodes[n]['Event_Id'], properties: in_data.nodes[n] })
     node = in_data.nodes[n]
-    g.setNode(node.EventID, { label: node.Activity, class: 'Event', shape: 'rect', data: node })
+    g.setNode(node.Event_Id, { label: node.Activity, class: 'Event', shape: 'rect', data: node })
   }
 
   for (e in edge_data) {
@@ -60,9 +60,9 @@ function plot_graph(in_data) {
 function draw(data) {
   nodes = []
   for (n in data.nodes) {
-    //node_data.push({ id: in_data.nodes[n]['EventID'], properties: in_data.nodes[n] })
+    //node_data.push({ id: in_data.nodes[n]['Event_Id'], properties: in_data.nodes[n] })
     node = data.nodes[n]
-    nodes.push({ id: node.EventID, label: node.Activity, data: node })
+    nodes.push({ id: node.Event_Id, label: node.Activity, data: node })
   }
 
   var container = document.getElementById('networkx');
@@ -134,9 +134,9 @@ function draw(data) {
 function generate_ekg(data) {
   nodes = []
   for (n in data.nodes) {
-    //node_data.push({ id: in_data.nodes[n]['EventID'], properties: in_data.nodes[n] })
+    //node_data.push({ id: in_data.nodes[n]['Event_Id'], properties: in_data.nodes[n] })
     node = data.nodes[n]
-    nodes.push({ data: { id: node.EventID, label: node.Activity.replaceAll("_", "\n"), color: node.color, node_data: node } })
+    nodes.push({ data: { id: node.Event_Id, label: node.Activity.replaceAll("_", "\n"), color: node.color, node_data: node, type: node.Type } })
   }
 
   edges = []
@@ -146,20 +146,49 @@ function generate_ekg(data) {
     edge_properties = edge.edge_properties
     //"edge_weight": 1,   "CorrelationType": "Message",
     edge_weight = edge_properties.edge_weight
-    if(edge_weight > 1){
-      edge_weight = edge_weight/2
-    }
     edge_info = edge_weight + '(' + edge_properties.CorrelationType + ')\n:' + edge_label
+    if (edge_weight >= 4) {
+      edge_weight = edge_weight / 20
+    }
     edges.push({ data: { source: edge.source, target: edge.destination, id: e, label: edge_info, color: edge.color, weight: edge_weight } })
   }
 
   elements = nodes.concat(edges)
 
+  /* FIND FIRST PROCESS NODE
+  const incomingEdges = {};
 
+  edges.forEach(edge => {
+    const targetNode = edge.data.target;
+    if (!incomingEdges[targetNode]) {
+      incomingEdges[targetNode] = [];
+    }
+    incomingEdges[targetNode].push(edge.data.source);
+  });
+
+  console.log(incomingEdges)
+
+  const nodesWithNoIncomingEdges = [];
+
+  edges.forEach(edge => {
+    const sourceNode = edge.data.source;
+    if (!incomingEdges[sourceNode]) {
+      nodesWithNoIncomingEdges.push(sourceNode);
+    }
+  });
+
+  console.log(nodesWithNoIncomingEdges)
+*/
   var cy = cytoscape({
     container: document.getElementById('cyto'), // container to render in
     elements: elements,
     style: [ // the stylesheet for the graph
+      {
+        selector: 'node[type="HiddenNode"]',
+        style: {
+          'shape': 'round-tag',
+        }
+      },
       {
         selector: 'node',
         style: {
@@ -196,26 +225,44 @@ function generate_ekg(data) {
         }
       }
     ],
+    /*
+        layout: {
+          name: 'dagre',
+          directed: true,
+          spacingFactor: 1.0,
+          avoidOverlap: true,
+          nodeDimensionsIncludeLabels: true,
+          multigraph: true,
+          nodeSep: 150, // the separation between adjacent nodes in the same rank
+          edgeSep: 60, // the separation between adjacent edges in the same rank
+          rankSep: 150, // the separation between each rank in the layout
+          rankDir: 'LR', // 'TB' for top to bottom flow, 'LR' for left to right,
+        }*/
 
     layout: {
-      name: 'dagre',
-      directed: true,
-      spacingFactor: 1.0,
-      avoidOverlap: true,
-      nodeDimensionsIncludeLabels: true,
-      multigraph: true,
-      nodeSep: 150, // the separation between adjacent nodes in the same rank
-      edgeSep: 60, // the separation between adjacent edges in the same rank
-      rankSep: 150, // the separation between each rank in the layout
-      rankDir: 'LR', // 'TB' for top to bottom flow, 'LR' for left to right,
+      name: 'breadthfirst',
+      fit: true, // whether to fit the viewport to the graph
+      directed: true, // whether the tree is directed downwards (or edges can point in any direction if false)
+      padding: 30, // padding on fit
+      circle: false, // put depths in concentric circles if true, put depths top down if false
+      grid: false, // whether to create an even grid into which the DAG is placed (circle:false only)
+      spacingFactor: 3, // positive spacing factor, larger => more space between nodes (N.B. n/a if causes overlap)
+      boundingBox: undefined, // constrain layout bounds; { x1, y1, x2, y2 } or { x1, y1, w, h }
+      avoidOverlap: true, // prevents node overlap, may overflow boundingBox if not enough space
+      nodeDimensionsIncludeLabels: false, // Excludes the label when calculating node bounding boxes for the layout algorithm
+      roots: undefined, // the roots of the trees
+      depthSort: undefined, // a sorting function to order nodes at equal depth. e.g. function(a, b){ return a.data('weight') - b.data('weight') }
+      animate: false, // whether to transition the node positions
+      ready: undefined, // callback on layoutready
+      stop: undefined, // callback on layoutstop
+      transform: function (node, position) { return position; } // transform a given node position. Useful for changing flow direction in discrete layouts
     }
-
   });
 
- /* 
-  var svgContent = cy.svg({ full: true })
-  var blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-  saveAs(blob, "demo.svg");*/
+  /* 
+   var svgContent = cy.svg({ full: true })
+   var blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+   saveAs(blob, "demo.svg");*/
 }
 
 
