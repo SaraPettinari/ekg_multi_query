@@ -11,13 +11,13 @@ GET_NODES = """
 GET_EDGE_DATA = """
             MATCH (e)-[rel]->(e1)
             WHERE e.visibility = true AND e1.visibility = true
-            RETURN e.EventID as source, e1.EventID as destination, type(rel) as edge_label, properties(rel) as edge_properties
+            RETURN e.Event_Id as source, e1.Event_Id as destination, type(rel) as edge_label, properties(rel) as edge_properties
             """
 
 GET_EDGE_DATA_TYPED = """
             MATCH (e)-[rel]->(e1)
             WHERE e.visibility = true AND e1.visibility = true AND type(rel) = $rel_type
-            RETURN e.EventID as source, e1.EventID as destination, type(rel) as edge_label, properties(rel) as edge_properties
+            RETURN e.Event_Id as source, e1.Event_Id as destination, type(rel) as edge_label, properties(rel) as edge_properties
             """
 
 GET_NODE_DATA = """
@@ -62,14 +62,14 @@ CREATE_TYPED_ENTITY = """
 
 # Queries for handling communication
 CREATE_MESSAGE_ENTITY = """
-                        MATCH (e:Event) UNWIND e.Message AS msg
-                        WITH DISTINCT msg, e.Payload as payload
+                        MATCH (e:Event) UNWIND e.Msg_Id AS msg
+                        WITH DISTINCT msg, e.Msg_Payload as payload
                         MERGE (n:Entity:Message {ID:msg, EntityType:"Message", Payload:payload})
                         SET n.visibility = false
                     """
 
 CORR_MESSAGE_ENTITY = """
-                        MATCH (e:Event) UNWIND e.Message AS msg 
+                        MATCH (e:Event) UNWIND e.Msg_Id AS msg 
                         WITH e, msg
                         MATCH (n:Entity:Message) WHERE msg = n.ID
                         MERGE (e)-[c:CORR]->(n)
@@ -78,7 +78,7 @@ CORR_MESSAGE_ENTITY = """
 SET_NODE_COMM = """
             MATCH (e:Event)-[:CORR]->(m:Entity:Message) 
             WHERE e.Msg_Role = 'send' 
-            UNWIND e.Message AS msg
+            UNWIND e.Msg_Id AS msg
             WITH distinct msg, m, e as nodes ORDER BY e.Time
             WITH collect(nodes) as event_list, m
             MATCH (e2:Event)-[:CORR]->(m) 
@@ -113,8 +113,8 @@ CREATE_MULTI_SENDER = """
                     WITH n.Message as msg, n.Msg_Role as rl, collect(n) as nodelist, count(*) as count
                     WHERE count > 1 and msg IS NOT NULL and rl = 'send'
                     WITH nodelist, head(nodelist) as first_el, last(nodelist) as last_el, size(nodelist) as n_rep
-                    WITH nodelist, first_el, last_el, n_rep, duration.between(first_el.timestamp, last_el.timestamp) as dur
-                    MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.timestamp, last_msg: last_el.timestamp})
+                    WITH nodelist, first_el, last_el, n_rep, duration.between(first_el.Time, last_el.Time) as dur
+                    MERGE (s:Class:MultiSender {repetitions: n_rep, first_msg: first_el.Time, last_msg: last_el.Time})
                     SET s += properties(last_el)
                     MERGE (s)-[:DF {edge_weight: n_rep, total_duration: dur, CorrelationType:'Robot'}]->(s)
                     FOREACH (node in nodelist | 
@@ -155,6 +155,11 @@ CHANGE_ENTITY_VISIBILITY = """
                     SET n.visibility = false
                     """
 
+ADD_START_ENTITY_NODE = """
+                    MATCH (e:Event)
+                    WHERE e.Robot = $robot 
+                    RETURN e ORDER BY e.Time LIMIT 1
+                    """
 
 class ElementType():
     EVENT = 'Event'
@@ -211,7 +216,7 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
         event_id += f' {p_val}'
         with_query += f'e.{p} AS {p_val}'
         perspectives_dict[p] = p_val
-        perspectives_dict['EventID'] = event_id
+        perspectives_dict['Event_Id'] = event_id
         match_event_class += f'c.{p} = e.{p} '
         if p != matching_perspectives[-1]:
             with_query += ', '
@@ -232,6 +237,21 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
     # print(main_query)
     return main_query
 
+'''
+MATCH (e:Event)-[:CORR]->(n:Entity:Robot)
+WITH distinct e.Activity AS e_Activity, n.rtype AS e_Robot
+MERGE (c:Class {Activity: e_Activity, Event_Id: "c_" +  e_Activity + "_" + e_Robot, Robot: e_Robot, Type: "Activity;Robot"})
+WITH c
+MATCH (c : Class) WHERE c.Type = "Activity;Robot"
+MATCH (e : Event)-[:CORR]->(n:Entity) WHERE c.Activity = e.Activity AND c.Robot = n.rtype
+MERGE (e) -[:OBSERVED]-> (c)
+SET c.visibility = true
+ SET e.visibility = false
+ 
+ 
+Match (e:Event)-[:CORR]->(n:Entity:*)
+WITH distinct e.Activity AS e_Activity, n.* AS e_Robot
+'''
 
 def match_rel_generator(n1_var, n1_type, rel_var, rel_type, n2_var, n2_type):
     '''

@@ -67,12 +67,15 @@ class MRSGraph:
         aggregation_perspectives = []
         if robot_abstraction == 1:
             aggregation_perspectives = ['Activity', 'Robot']
+        if robot_abstraction == 2:
+            aggregation_perspectives = ['Activity', 'Robot.rtype']
         elif robot_abstraction == 3:
             aggregation_perspectives = ['Activity']
 
         res_query = queries.query_aggregation_generator(
             aggregation_perspectives, ';'.join(aggregation_perspectives))
         self.session.run(res_query)
+        print(res_query)
 
     def event_rel_extraction(self, node_type: str, relationship: str):
         '''
@@ -102,13 +105,14 @@ class MRSGraph:
         self.session.run(queries.CORR_MESSAGE_ENTITY)
         self.session.run(queries.SET_NODE_COMM)
 
-        if self.activity_abstraction == 3:
+        if self.activity_abstraction == 1:
             self.session.run(queries.CLASS_AGGREGATION,
                              rel_type='COMM', class_rel_type='COMM_C')
             res = self.session.run(
                 queries.GET_EDGE_DATA_TYPED, rel_type='COMM_C')
 
         else:
+            '''
             if message_aggregation == 2:
                 self.session.run(queries.CREATE_MULTI_SENDER)
                 self.session.run(queries.MATCH_DF_MS_PRE)
@@ -117,7 +121,7 @@ class MRSGraph:
 
             elif message_aggregation == 1:
                 self.session.run(queries.CHANGE_VISIBILITY, visibility=True)
-
+            '''
             updated_edges = self.session.run(
                 queries.GET_EDGE_DATA_TYPED, rel_type='DF')
             self.edges = updated_edges.to_df()
@@ -152,10 +156,8 @@ class MRSGraph:
             queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
         self.edges = pd.DataFrame(resp.data())
 
-        if communication[0]:
+        if communication == 1:
             message_aggregation = -1
-            #if communication[1] != None:
-            #    message_aggregation = int(communication[1])
             self.handle_communication(message_aggregation)
 
         # association of colors useful for representing EKG
@@ -165,8 +167,29 @@ class MRSGraph:
         if 'Robot' in self.nodes.columns:
             nodecolors = StyleEKG.set_nodes_color(self.nodes)
             self.nodes['color'] = self.nodes['Robot'].apply(nodecolors.get)
+            for rob in self.nodes['Robot'].unique():
+                resp = self.session.run(queries.ADD_START_ENTITY_NODE, robot=rob)
+                new_node = (resp.data()[0]).copy()
+                act_name = new_node['e']['Activity']
+                node = self.nodes[self.nodes['Activity'].str.contains(act_name) & self.nodes['Robot'].str.contains(rob)].copy()
+                destination = node['Event_Id'].to_string().split()[-1]
+                node['Type'] = 'HiddenNode'
+                node['Activity'] = rob
+                node['Event_Id'] = rob + '_start'
+                                
+                self.nodes = self.nodes.append(node)
+                edge = self.edges.iloc[-1].copy()
+                edge['source'] =  rob + '_start'
+                print(destination)
+                edge['destination'] =  destination
+                edge['edge_label'] = 'start'
+                edge['edge_properties'] = {'edge_weight': '', 'CorrelationType': 'Robot'}
+                
+                self.edges = self.edges.append(edge)
 
         self.edges.to_csv('edges.csv', sep=';')
+        #self.nodes.to_csv('nodes.csv', sep=';')
+        
 
         return {'nodes': self.nodes, 'edges': self.edges}
 
@@ -206,21 +229,21 @@ def extract_nodes(nodes, perspectives):
         return curr_nodes
 
 
-def neo_datetime_conversion(timestamp):
+def neo_datetime_conversion(Time):
     '''
     From Neo4j datetime to datetime
     '''
-    if type(timestamp) != float:
-        millis = int(timestamp.nanosecond/1000)
-        t = datetime.datetime(timestamp.year, timestamp.month, timestamp.day,
-                              timestamp.hour, timestamp.minute, timestamp.second, millis)
+    if type(Time) != float:
+        millis = int(Time.nanosecond/1000)
+        t = datetime.datetime(Time.year, Time.month, Time.day,
+                              Time.hour, Time.minute, Time.second, millis)
         return t
 
 
 if __name__ == '__main__':
     robot_abstraction = input('Select process abstraction level:')
     activity_abstraction = input('Select event abstraction level:')
-    perspectives = ['EventID', 'Activity', 'Robot', 'timestamp']
+    perspectives = ['Event_Id', 'Activity', 'Robot', 'Time']
 
     mrsg = MRSGraph().generate_graph(
         robot_abstraction, activity_abstraction, perspectives, communication=False)

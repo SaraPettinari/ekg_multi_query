@@ -120,13 +120,13 @@ def get_graph():
         
 
     result = ekg.generate_graph(robot_abstraction=resource_slider_val, activity_abstraction=activity_slider_val,
-                                             perspectives=selected_perspectives, communication=[show_communication])
+                                             perspectives=selected_perspectives, communication=show_communication)
 
     nodes = result['nodes'].to_dict(orient='records')
     edges = result['edges'].to_dict(orient='records')
 
     resp = {'nodes': nodes, 'edges': edges}
-
+    
     #print(nodes)
     return render_template('ekg_gui.html', ev_id_abstraction=resource_slider_val, activity_abstraction=activity_slider_val, communication=show_communication, response_data=resp)
 
