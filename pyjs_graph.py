@@ -183,7 +183,7 @@ class MRSGraph:
                 print(destination)
                 edge['destination'] =  destination
                 edge['edge_label'] = 'start'
-                edge['edge_properties'] = {'edge_weight': '', 'CorrelationType': 'Robot'}
+                edge['edge_properties'] = {'edge_weight': 1, 'CorrelationType': 'Robot'}
                 
                 self.edges = self.edges.append(edge)
 

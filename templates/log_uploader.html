@@ -13,32 +13,57 @@
 <body>
     <!-- Perspectives choice -->
     <div class="container">
+        <hr class="hr" />
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary justify-content-center">
+            <h1 class="navbar-brand">Welcome!</h1>
+        </nav>
+        <hr class="hr" />
+
         <div class="row">
-            <form action="/uploader" method="POST" enctype="multipart/form-data">
-                <label for="log_file">Upload your event log: </label>
-                <input type="file" name="log_file" accept=".csv" class="btn btn-outline-secondary"
-                    value="Select file" />
-                <input type="submit" class="btn btn-outline-secondary" value="Upload" />
-            </form>
+            <div class="card">
+                <div class="card-body">
+                    <form action="/uploader" method="POST" enctype="multipart/form-data">
+                        <h5 class="card-title"><label for="log_file">Upload your event log: </label></h5>
+                        <input type="file" name="log_file" accept=".csv" class="btn btn-outline-secondary"
+                            value="Select file" />
+                        <input type="submit" class="btn btn-outline-secondary" value="Upload" />
+                    </form>
+                    {% if not query_data %} 
+                    <p class="card-text">*supported only .csv format</p>
+                    {% else %}
+                    <p class="card-text"> File successfully uploaded! </p>
+                    {% endif %}
+                </div>
+              </div>
+
         </div>
 
         {% if query_data %}
         <div>
             <p>Check your parameters identifiers</p>
             <form action="/data_uploader" method="POST" enctype="multipart/form-data">
-                {% for key, value in query_data.items() %}
-                {% if key == 'path' %}
-                <label for="{{ value }}" hidden> {{ key }} </label> <input type="text" id="{{ value }}" name="{{ key }}"
-                    value="{{ value }}" hidden>
-                {% else %}
-                <label for="{{ value }}"> {{ key }} </label> &rarr; <input type="text" id="{{ value }}" name="{{ key }}"
-                    value="{{ value }}">
-                <label for="{{ key }}_entity">Is it an entity?</label>    
-                <input class="form-check-input" type="checkbox" id="{{ key }}_entity" name="{{ key }}_entity">
-                {% endif %}
-                <br>
+                <table style="width:100%">
+                    <tr>
+                        <th>Data Columns</th>
+                        <th>Desired Identifier</th>
+                        <th>Entity?</th>
+                    </tr>
+                    {% for key, value in query_data.items() %}
+                    <tr>
+                        {% if key == 'path' %}
+                        <td><label for="{{ value }}" hidden> {{ key }} </label></td>
+                        <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}" hidden>
+                        {% else %}
+                        <td><label for="{{ value }}"> {{ key }} </label> </td>
+                        <td> <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}"> </td>
+                        <td> <input class="form-check-input" type="checkbox" id="{{ key }}_entity"
+                                name="{{ key }}_entity"></td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </table>
 
-                {% endfor %}
+                <hr class="hr" />
 
                 <div class="row">
                     <input type="submit" class="btn btn-outline-primary" value="Upload" />

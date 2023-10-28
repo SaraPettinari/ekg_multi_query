@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 import json
@@ -62,8 +62,7 @@ def data_uploader():
         # check if some entities needs to be created
         if len(entity_list) > 0:
             for entity in entity_list:
-                print('TO FIX')
-                #ekg.create_entity(entity)
+                ekg.create_entity(entity)
 
         return get_perspectives()
 
@@ -132,4 +131,4 @@ def get_graph():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=3000)
+    app.run(host='127.0.0.1', port=3000, debug=True)

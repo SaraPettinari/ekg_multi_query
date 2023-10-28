@@ -11,7 +11,6 @@ option {
 }
 
 input[type="range"] {
-	appearance: slider-horizontal;
 	position: relative;
 	width: 100%;
 }
