@@ -28,7 +28,8 @@ GET_NODE_DATA = """
 
 # DF relation between events from the same resource
 NODE_DF = """
-            MATCH (n:Entity:Robot)<-[:CORR]-(e)
+            MATCH (n:Entity)<-[:CORR]-(e)
+            WHERE n.EntityType = $entitytype
             WITH n, e AS nodes ORDER BY e.Time, ID(e)
             WITH n, collect(nodes) AS event_node_list
             UNWIND range(0, size(event_node_list)-2) AS i
@@ -46,17 +47,16 @@ NODE_DF_MRS = """
                 MERGE (e1)-[df:DF_MRS {CorrelationType:'Activity', edge_weight: 1}]->(e2)
             """
 
-CREATE_TYPED_ENTITY = """
+CREATE_TYPED_ENTITY = """                      
                         MATCH (e:Event) 
                         UNWIND e[$entity] AS entity_name
                         WITH DISTINCT entity_name
-                        CALL apoc.create.node(['Entity:' + $entity],  {ID:entity_name, EntityType:$entity})
-                        YIELD node
+                        MERGE (:Entity {ID:entity_name, EntityType:$entity})
                         WITH entity_name
-                        MATCH (e:Event)
-                        WITH e, entity_name
                         MATCH (n:Entity) 
                         WHERE n.ID = entity_name AND n.EntityType = $entity
+                        MATCH (e:Event)
+                        WHERE e[$entity] = entity_name
                         MERGE (e)-[c:CORR]->(n)
                     """
 
@@ -161,6 +161,7 @@ ADD_START_ENTITY_NODE = """
                     RETURN e ORDER BY e.Time LIMIT 1
                     """
 
+
 class ElementType():
     EVENT = 'Event'
     CLASS = 'Class'
@@ -237,6 +238,7 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
     # print(main_query)
     return main_query
 
+
 '''
 MATCH (e:Event)-[:CORR]->(n:Entity:Robot)
 WITH distinct e.Activity AS e_Activity, n.rtype AS e_Robot
@@ -252,6 +254,7 @@ SET c.visibility = true
 Match (e:Event)-[:CORR]->(n:Entity:*)
 WITH distinct e.Activity AS e_Activity, n.* AS e_Robot
 '''
+
 
 def match_rel_generator(n1_var, n1_type, rel_var, rel_type, n2_var, n2_type):
     '''

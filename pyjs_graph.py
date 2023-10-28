@@ -31,7 +31,7 @@ class MRSGraph:
 
     def create_entity(self, entity_name):
         '''
-        Creates an entity into Neo4j DB
+        Creates an entity into Neo4j DB and adds the :CORR relationship
         @parameter :entity_name: entity type
         '''
         self.session.run(queries.CREATE_TYPED_ENTITY, entity=entity_name)
@@ -94,7 +94,7 @@ class MRSGraph:
                              rel_type=relationship, class_rel_type=class_relationship)
             return class_relationship
         else:
-            self.session.run(queries.NODE_DF)
+            self.session.run(queries.NODE_DF, entitytype='Robot')
             return relationship
 
     def handle_communication(self, message_aggregation):

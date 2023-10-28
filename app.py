@@ -10,6 +10,10 @@ from neo4j import GraphDatabase
 
 
 app = Flask(__name__)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 1  # disable caching
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.config['SECRET_KEY'] = os.urandom(24)
+
 Bootstrap(app)
 selected_perspectives = []
 show_communication = False
@@ -95,10 +99,13 @@ def graph():
     communication_perspective = False
     global selected_perspectives
     selected_perspectives = list(request.form.values())
-    #ho bisogno di distinguere local e global [match (e:Event) where e.$perspective is null return e]
+    #TODO: I should distinguish between local e global [match (e:Event) where e.$perspective is null return e]
     unique_eid = list(filter(lambda x : 'key' in  x, selected_perspectives))[0].replace('key: ', '')
+    selected_perspectives.pop(-1)
     #if "Message" in selected_perspectives:
     #    communication_perspective = True
+    session['perspectives'] = selected_perspectives
+    session['activity_identifier'] = unique_eid
     return render_template('ekg_gui.html', activity_abstraction=1, resource_abstraction=1, activity_id = unique_eid)
 
 

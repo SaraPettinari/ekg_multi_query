@@ -25,6 +25,17 @@
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            <!--
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item active">
+                        <a class="nav-link" onclick="showNav()">Sliders</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" onclick="showNav()">Analysis</a>
+                    </li>
+                </ul>
+            </div>-->
         </nav>
         <hr class="hr" />
         <div class="row" id="sliders">
@@ -48,21 +59,18 @@
                                 <option value="5" label="Event Identity"></option>
                             </datalist>
                         </div>
-                        <!-- Create a slider for each selected perspective -->
-                        {% for value in session['perspectives'] %}
-                        <div class="row">
-                            <label class="p" for="{{ value }}_slider">{{ value }}:</label>
-                            <input type="range" min="1" max="3" value="{{ resource_abstraction }}" step="1"
-                                id="{{ value }}_slider" list="{{ value }}_values" name="{{ value }}_slider"
-                                class="slider" />
 
-                            <datalist id="{{ value }}_values">
+                        <div class="row">
+                            <label class="p" for="resource_slider">Robot:</label>
+                            <input type="range" min="1" max="3" value="{{ resource_abstraction }}" step="1"
+                                id="resource_slider" list="resource_values" name="resource_slider" class="slider" />
+
+                            <datalist id="resource_values">
                                 <option value="1" label="Identity"></option>
                                 <option value="2" label="Type"></option>
                                 <option value="3" label="None"></option>
                             </datalist>
                         </div>
-                        {% endfor %}
                     </div>
                     <div class="col">
                         <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -90,6 +98,27 @@
                         </div>
                     </div>
                 </div>
+                <!--              {% if communication %}
+                <div class="row">
+                    <label class="form-check-label" for="communication_link" name="communication_link">
+                        <input class="form-check-input" type="checkbox" id="communication_link"
+                            name="communication_link" onclick="showOptions()">
+                        Show Communication Link
+                    </label>
+                </div>
+
+                <div class="row" id="msg_slider_div" style="display:none">
+                    <label class="h4" for="msg_slider">Choose event message abstraction:</label>
+                    <input type="range" min="1" max="2" value="{{ msg_abstraction }}" step="1" id="msg_slider"
+                        list="msg_values" name="msg_slider" class="slider" />
+
+                    <datalist id="msg_values">
+                        <option value="1" label="Each event message is a node"></option>
+                        <option value="2" label="Same activities name and same message id aggregation"></option>
+                    </datalist>
+                </div>
+                {% endif %}
+-->
                 <div class="row">
                     <input type="submit" class="btn btn-primary" value="Show Graph" />
                 </div>
@@ -101,9 +130,9 @@
 
 
         <div id="ekg">
+            <!--           <div class="row" id="networkx"></div>-->
             <div class="row frame-graph" id="cyto"> </div>
-            <button class="btn btn-primary" onclick="downloadEKG()"><i class="fa fa-download"></i> Export as
-                SVG</button>
+            <button class="btn btn-primary" onclick="downloadEKG()"><i class="fa fa-download"></i> Export as SVG</button>
 
             <script>
                 const response_data = {{ response_data|default ("") | tojson }}
