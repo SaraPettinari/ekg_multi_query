@@ -13,85 +13,87 @@
     <script src="https://cdn.jsdelivr.net/npm/svg.js@2.7.1/dist/svg.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre-d3@0.6.4/dist/dagre-d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-zoom@3.0.0/dist/d3-zoom.min.js"></script>
 </head>
 
 <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg tool">
+        <div class="container">
+            <span class="navbar-brand">Multi-Query Aggregation</span>
+        </div>
+    </nav>
     <!-- SLIDERS-->
-    <div class="container">
-        <hr class="hr" />
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary justify-content-center">
-            <h1 class="navbar-brand">Multi-Query Aggregation</h1>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-        </nav>
-        <hr class="hr" />
+    <div class="container  mt-4">
+
         <div class="row" id="sliders">
 
             <form method="POST" action="get_graph">
                 <div class="row">
-                    <div class="col">
-                        <nav class="navbar navbar-expand-lg navbar-light bg-light">
-                            <h1 class="navbar-brand">Node Aggregation</h1>
-                        </nav>
-                        <div class="row">
-                            <label class="p" for="activity_slider">Activity:</label>
-                            <input type="range" min="1" max="5" value="{{ activity_abstraction }}" step="1"
-                                id="activity_slider" list="event_values" name="activity_slider" class="slider" />
+                    <div class="col-md-10 mx-auto">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title"> Node Aggregation</h5>
+                                <div class="row">
+                                    {% for key, value in session['activity'].items() %}
+                                    <label class="p" for="activity_slider">{{ key }}:</label>
+                                    <input type="range" min="1" max="{{ value['steps']|length }}"
+                                        value="{{ value['selected_step'] }}" step="1" id="activity_slider"
+                                        list="event_values" name="activity_slider" class="slider" />
 
-                            <datalist id="event_values">
-                                <option value="1" label="Identity"></option>
-                                <option value="2" label="Predecessor Identity"></option>
-                                <option value="3" label="Successor Identity"></option>
-                                <option value="4" label="Neighbors Identity"></option>
-                                <option value="5" label="Event Identity"></option>
-                            </datalist>
-                        </div>
-                        <!-- Create a slider for each selected perspective -->
-                        {% for value in session['perspectives'] %}
-                        <div class="row">
-                            <label class="p" for="{{ value }}_slider">{{ value }}:</label>
-                            <input type="range" min="1" max="3" value="{{ resource_abstraction }}" step="1"
-                                id="{{ value }}_slider" list="{{ value }}_values" name="{{ value }}_slider"
-                                class="slider" />
+                                    <datalist id="event_values">
+                                        {% set count = namespace(value=0) %}
+                                        {% for slider_step in value['steps'] %}
+                                        {% set count.value = count.value + 1 %}
+                                        <option value="{{  count.value }}" label="{{ slider_step }}"></option>
+                                        {% endfor %}
+                                    </datalist>
+                                    {% endfor %}
+                                </div>
+                                <!-- Create a slider for each selected perspective -->
+                                {% for key, value in session['sliders'].items() %}
+                                <div class="row">
+                                    <label class="p" for="{{ key }}_slider">{{ key }}:</label>
+                                    <input type="range" min="1" max="{{ value['steps']|length }}"
+                                        value="{{ value['selected_step'] }}" step="1" id="{{ key }}_slider"
+                                        list="{{ key }}_values" name="{{ key }}_slider" class="slider" />
 
-                            <datalist id="{{ value }}_values">
-                                <option value="1" label="Identity"></option>
-                                <option value="2" label="Type"></option>
-                                <option value="3" label="None"></option>
-                            </datalist>
+                                    <datalist id="{{ key }}_values">
+                                        {% set count = namespace(value=0) %}
+                                        {% for slider_step in value['steps'] %}
+                                        {% set count.value = count.value + 1 %}
+                                        <option value="{{ count.value }}" label="{{ slider_step }}"></option>
+                                        {% endfor %}
+                                    </datalist>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                        {% endfor %}
                     </div>
-                    <div class="col">
-                        <nav class="navbar navbar-expand-lg navbar-light bg-light">
-                            <h1 class="navbar-brand">Edge Aggregation</h1>
-                        </nav>
-                        <div class="row">
-                            <label class="p" for="edge_msg">Message:</label>
-                            <input type="range" min="1" max="2" value="1" step="1" id="edge_msg" list="edge_msg_val"
-                                name="edge_msg" class="slider" />
-
-                            <datalist id="edge_msg_val">
-                                <option value="1" label="Show"></option>
-                                <option value="2" label="Hide"></option>
-                            </datalist>
-                        </div>
-                        <div class="row">
-                            <label class="p" for="edge_robot">Robot:</label>
-                            <input type="range" min="1" max="2" value="1" step="1" id="edge_robot" list="edge_rob_val"
-                                name="edge_robot" class="slider" />
-
-                            <datalist id="edge_rob_val">
-                                <option value="1" label="Show"></option>
-                                <option value="2" label="Hide"></option>
-                            </datalist>
+                    <div class="col-md-2">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title"> Edge View</h5>
+                                <div class="row">
+                                    <label class="p" for="edge_msg">PERSPECTIVE ID:</label>
+                                    <!-- Change the input type to a switch -->
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" id="activity_switch" name="activity_switch"
+                                            class="form-check-input">
+                                        <label class="form-check-label show-label" for="activity_switch">Show</label>
+                                        <label class="form-check-label hide-label" for="activity_switch">Hide</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
-                    <input type="submit" class="btn btn-primary" value="Show Graph" />
+                    <input type="submit" class="btn tool btn-tool" value="Show Graph" />
                 </div>
             </form>
 
@@ -101,13 +103,15 @@
 
 
         <div id="ekg">
+            <div id="graph-container"></div>
+
             <div class="row frame-graph" id="cyto"> </div>
             <button class="btn btn-primary" onclick="downloadEKG()"><i class="fa fa-download"></i> Export as
                 SVG</button>
 
             <script>
                 const response_data = {{ response_data|default ("") | tojson }}
-                generate_ekg(response_data)
+                generate_dagre(response_data)
             </script>
         </div>
     </div>

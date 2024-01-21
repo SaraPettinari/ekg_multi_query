@@ -1,3 +1,25 @@
+html body {
+	background-color: #f4f4f4;
+
+}
+
+html .tool {
+	background-color: #031799;
+	color: #ffffff;
+}
+
+html .btn-tool:hover {
+	background-color: #ffffff;
+	color:  #031799;
+	border-color:  031799;
+	box-shadow: 5px 5px #031799a3;
+}
+
+.text-tool{
+	color: #031799;
+}
+
+
 datalist {
 	display: flex;
 	flex-direction: row;
@@ -72,4 +94,9 @@ text {
 .label {
 	stroke: #333;
 	stroke-width: 1.5px;
+}
+
+#graph-container {
+	width: 100%;
+	height: 600px;
 }

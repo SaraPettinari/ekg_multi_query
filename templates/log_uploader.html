@@ -11,77 +11,178 @@
 </head>
 
 <body>
-    <!-- Perspectives choice -->
-    <div class="container">
-        <hr class="hr" />
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary justify-content-center">
-            <h1 class="navbar-brand">Welcome!</h1>
-        </nav>
-        <hr class="hr" />
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg tool">
+        <div class="container">
+            <span class="navbar-brand">Welcome!</span>
+        </div>
+    </nav>
 
+    <!-- Content Container -->
+    <div class="container mt-4">
+
+        <!-- File Upload Section -->
         <div class="row">
-            <div class="card">
-                <div class="card-body">
-                    <form action="/uploader" method="POST" enctype="multipart/form-data">
-                        <h5 class="card-title"><label for="log_file">Upload your event log: </label></h5>
-                        <input type="file" name="log_file" accept=".csv" class="btn btn-outline-secondary"
-                            value="Select file" />
-                        <input type="submit" class="btn btn-outline-secondary" value="Upload" />
-                    </form>
-                    {% if not query_data %} 
-                    <p class="card-text">*supported only .csv format</p>
-                    {% else %}
-                    <p class="card-text"> File successfully uploaded! </p>
-                    {% endif %}
+            <div class="col-md-6 mx-auto">
+                <div class="card">
+                    <div class="card-body">
+                        {% if not query_data %}
+                        <form action="/uploader" method="POST" enctype="multipart/form-data">
+                            <h5 class="card-title">Upload your event log:</h5>
+                            <div class="input-group mb-3">
+                                <input type="file" name="log_file" accept=".csv" class="form-control"
+                                    aria-describedby="fileUploadBtn">
+                                <button type="submit" class="btn btn-outline-secondary"
+                                    id="fileUploadBtn">Upload</button>
+                            </div>
+                        </form>
+                        <p class="card-text text-muted">*only .csv format supported</p>
+                        {% else %}
+                        <h5 class="card-title"> Log Uploaded: <strong> {{ query_data['log_name'] }}</strong></h5>
+                        <p class="card-text text-tool">File successfully uploaded!</p>
+                        {% endif %}
+                    </div>
                 </div>
-              </div>
-
+            </div>
         </div>
 
+        <!-- Parameter Identifiers Section -->
         {% if query_data %}
-        <div>
-            <p>Check your parameters identifiers</p>
+        <div class="mt-4">
             <form action="/data_uploader" method="POST" enctype="multipart/form-data">
-                <table style="width:100%">
-                    <tr>
-                        <th>Data Columns</th>
-                        <th>Desired Identifier</th>
-                        <th>Entity?</th>
-                    </tr>
-                    {% for key, value in query_data.items() %}
-                    <tr>
-                        {% if key == 'path' %}
-                        <td><label for="{{ value }}" hidden> {{ key }} </label></td>
-                        <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}" hidden>
-                        {% else %}
-                        <td><label for="{{ value }}"> {{ key }} </label> </td>
-                        <td> <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}"> </td>
-                        <td> <input class="form-check-input" type="checkbox" id="{{ key }}_entity"
-                                name="{{ key }}_entity"></td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </table>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="card-title">Map the following data</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="d-event" class="form-label">Event ID:</label>
+                                    <select id="d-event" name="d-event" class="form-select"
+                                        onchange="updateCheckboxes(this)">
+                                        {% for key, value in query_data.items() %}
+                                        {% if key != 'path' and key != 'log_name' %}
+                                        <option value="{{ key }}">{{ key }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
 
-                <hr class="hr" />
+                                <div class="mb-3">
+                                    <label for="d-time" class="form-label">Timestamp:</label>
+                                    <select id="d-time" name="d-time" class="form-select"
+                                        onchange="updateCheckboxes(this)">
+                                        {% for key, value in query_data.items() %}
+                                        {% if key != 'path' and key != 'log_name' %}
+                                        <option value="{{ key }}">{{ key }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="d-activity" class="form-label">Activity:</label>
+                                    <select id="d-activity" name="d-activity" class="form-select"
+                                        onchange="updateCheckboxes(this)">
+                                        {% for key, value in query_data.items() %}
+                                        {% if key != 'path' and key != 'log_name' %}
+                                        <option value="{{ key }}">{{ key }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="card-title">Select the Entities</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data Columns</th>
+                                            <!--    <th>Desired Identifier</th>-->
+                                            <th>Entity?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for key, value in query_data.items() %}
+
+                                        {% if key == 'path' or key == 'log_name' %}
+                                        <td><label for="{{ value }}" hidden>{{ key }}</label></td>
+                                        <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}" hidden>
+                                        {% else %}
+                                        <tr>
+                                            <!--    <td><input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}"
+                                                class="form-control"></td>-->
+                                            <td><label for="{{ value }}">{{ key }}</label></td>
+                                            <td><input class="form-check-input checkbox" type="checkbox"
+                                                    id="{{ key }}_entity" name="{{ key }}_entity"></td>
+                                        </tr>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <hr class="mt-4">
 
                 <div class="row">
-                    <input type="submit" class="btn btn-outline-primary" value="Upload" />
+                    <div class="col-md-6 mx-auto">
+                        <button type="submit" class="btn tool btn-tool">Upload</button>
+                    </div>
                 </div>
             </form>
         </div>
-
         {% else %}
-        <div class="row">
-            <label>
-                Is your DB ready?
-                <a class="btn btn-primary" href="{{ url_for('get_perspectives') }}">Click Here</a>
-            </label>
+        <!-- DB Ready Section
+        <div class="row mt-4">
+            <div class="col-md-6 mx-auto text-center">
+                <p>Is your DB ready?</p>
+                <a class="btn tool btn-tool" href="{{ url_for('get_perspectives') }}">Click Here</a>
+            </div>
+        </div> -->
+
+        <!-- DB Cleaned Section -->
+        <div class="row mt-2">
+            <div class="col-md-6 mx-auto text-center">
+                {% if db_cleaned %}
+                <p class="text-tool">Your DB has been successfully cleaned!</p>
+                {% else %}
+                <p>Delete old DB?</p>
+                <a class="btn tool btn-tool" href="{{ url_for('uploader.delete_db') }}">Click Here</a>
+                {% endif %}
+            </div>
         </div>
         {% endif %}
 
     </div>
 
+    <script>
+        // entity checkbox is disabled if the element has been selected in the mapping area
+        function updateCheckboxes(selectElement) {
+            var selectedValue = selectElement.value + '_entity';
+            var checkboxes = document.querySelectorAll('.checkbox');
+            var allSelects = document.querySelectorAll('.form-select');
+
+            var selectCheck = Array.from(allSelects, element => element[element.selectedIndex].value);
+
+            console.log(selectCheck);
+
+            checkboxes.forEach(checkbox => {
+                var name = checkbox.name.replace('_entity', '');
+                checkbox.disabled = selectCheck.includes(name);
+            });
+        }
+    </script>
 </body>
 
 </html>

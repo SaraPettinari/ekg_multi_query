@@ -6,6 +6,7 @@ import scripts.queries as queries
 import scripts.config as config
 import datetime
 import json
+import scripts.constants as cn
 
 
 class MRSGraph:
@@ -29,12 +30,37 @@ class MRSGraph:
                         DELETE e
                          """)
 
-    def create_entity(self, entity_name):
+    def get_entity(self, entity_name):
         '''
+        Get entity list
+        '''
+        result = self.session.run(queries.GET_ENTITY,  entity=entity_name)
+        return result.data()
+    
+    def create_corr(self):
+        '''
+        Create Correlation relationship
+        '''
+        self.session.run(queries.CREATE_CORR_REL)
+        
+    
+    '''
+    def create_entity(self, entity_name):
+        
         Creates an entity into Neo4j DB and adds the :CORR relationship
         @parameter :entity_name: entity type
-        '''
+        
         self.session.run(queries.CREATE_TYPED_ENTITY, entity=entity_name)
+    '''
+        
+    def create_entity(self, entity_data, entity_type):
+        '''
+        Creates an entity into Neo4j DB and adds the :CORR relationship
+        @parameter :entity_data: entity information
+        '''
+        self.session.run(queries.CREATE_PARAM_ENTITY, 
+                         entity_data = entity_data, 
+                         entity_type = entity_type)
 
     def init_ekg(self):
         '''
@@ -45,7 +71,8 @@ class MRSGraph:
         self.session.run(queries.CHANGE_ENTITY_VISIBILITY)
         self.session.run(queries.CLEAR_CLASSES)
         type_id = ElementType.EVENT
-        if self.activity_abstraction == 1:
+        actagg = self.activity_abstraction[cn.ACTIVITY]['selected_step']
+        if int(actagg) == 1:
             self.aggregate_activities(self.robot_abstraction)
             type_id = ElementType.CLASS
 
@@ -53,8 +80,8 @@ class MRSGraph:
 
         relationship = 'DF'
 
-        if self.robot_abstraction == 3:
-            relationship = relationship + '_MRS'
+#        if self.robot_abstraction == 3:
+#            relationship = relationship + '_MRS'
 
         relationship_out = self.event_rel_extraction(type_id, relationship)
         return relationship_out
@@ -66,11 +93,11 @@ class MRSGraph:
         '''
         aggregation_perspectives = []
         if robot_abstraction == 1:
-            aggregation_perspectives = ['Activity', 'Robot']
+            aggregation_perspectives = [cn.ACTIVITY, 'Robot']
         if robot_abstraction == 2:
-            aggregation_perspectives = ['Activity', 'Robot.rtype']
+            aggregation_perspectives = [cn.ACTIVITY, 'Robot.rtype']
         elif robot_abstraction == 3:
-            aggregation_perspectives = ['Activity']
+            aggregation_perspectives = [cn.ACTIVITY]
 
         res_query = queries.query_aggregation_generator(
             aggregation_perspectives, ';'.join(aggregation_perspectives))
@@ -135,6 +162,26 @@ class MRSGraph:
 
         comm_edges = res.to_df()
         self.edges = pd.concat([self.edges, comm_edges])
+        
+        
+    def generate_graph_v2(self, perspectives_agg, activity_agg):
+        '''
+        Generates the dataframes with data related to EKG nodes and edges
+        @parameter :perspectives_agg: process aggregation level chosen by the user over multiple perspectives
+        @parameter :activity_agg: event aggregation level chosen by the user
+        
+        @return a dictionary with nodes and edges
+        '''   
+        self.activity_abstraction = activity_agg
+        self.perspectives = perspectives_agg
+        
+        relationship_type = self.init_ekg()
+        
+        resp = self.session.run(
+            queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
+        self.edges = pd.DataFrame(resp.data())
+        
+        
 
     def generate_graph(self, robot_abstraction, activity_abstraction, perspectives, communication):
         '''
@@ -170,11 +217,11 @@ class MRSGraph:
             for rob in self.nodes['Robot'].unique():
                 resp = self.session.run(queries.ADD_START_ENTITY_NODE, robot=rob)
                 new_node = (resp.data()[0]).copy()
-                act_name = new_node['e']['Activity']
-                node = self.nodes[self.nodes['Activity'].str.contains(act_name) & self.nodes['Robot'].str.contains(rob)].copy()
+                act_name = new_node['e'][cn.ACTIVITY]
+                node = self.nodes[self.nodes[cn.ACTIVITY].str.contains(act_name) & self.nodes['Robot'].str.contains(rob)].copy()
                 destination = node['Event_Id'].to_string().split()[-1]
                 node['Type'] = 'HiddenNode'
-                node['Activity'] = rob
+                node[cn.ACTIVITY] = rob
                 node['Event_Id'] = rob + '_start'
                                 
                 self.nodes = self.nodes.append(node)
@@ -243,7 +290,7 @@ def neo_datetime_conversion(Time):
 if __name__ == '__main__':
     robot_abstraction = input('Select process abstraction level:')
     activity_abstraction = input('Select event abstraction level:')
-    perspectives = ['Event_Id', 'Activity', 'Robot', 'Time']
+    perspectives = ['Event_Id', cn.ACTIVITY, 'Robot', 'Time']
 
     mrsg = MRSGraph().generate_graph(
         robot_abstraction, activity_abstraction, perspectives, communication=False)

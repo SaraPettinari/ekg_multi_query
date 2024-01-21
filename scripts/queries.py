@@ -1,4 +1,5 @@
 import pandas as pd
+import scripts.constants as cn
 
 # not aggregated activities
 GET_NODES = """
@@ -44,7 +45,14 @@ NODE_DF_MRS = """
                 WITH collect(nodes) AS event_node_list
                 UNWIND range(0, size(event_node_list)-2) AS i
                 WITH event_node_list[i] AS e1, event_node_list[i+1] AS e2
-                MERGE (e1)-[df:DF_MRS {CorrelationType:'Activity', edge_weight: 1}]->(e2)
+                MERGE (e1)-[df:DF_MRS {CorrelationType: 'activity', edge_weight: 1}]->(e2)
+            """
+
+GET_ENTITY = """                      
+                MATCH (e:Event) 
+                UNWIND e[$entity] AS entity_name
+                WITH DISTINCT entity_name
+                RETURN entity_name
             """
 
 CREATE_TYPED_ENTITY = """                      
@@ -59,6 +67,14 @@ CREATE_TYPED_ENTITY = """
                         WHERE e[$entity] = entity_name
                         MERGE (e)-[c:CORR]->(n)
                     """
+                    
+CREATE_CORR_REL = """
+                        MATCH (n:Entity)
+                        WITH n, n.entity_id as id, n.type as type
+                        MATCH (e:Event)
+                        WHERE e[type] = id
+                        MERGE (e)-[c:CORR]->(n)
+                """
 
 # Queries for handling communication
 CREATE_MESSAGE_ENTITY = """
@@ -173,18 +189,18 @@ def load_mapping(path: str, log_name: str):
     column_names = list(df.columns)
     path = path.replace('\\', '/')
     data_list = {}
-    data_list['path'] = path
-    data_list['log_name'] = log_name
+    data_list[cn.PATH] = path
+    data_list[cn.LOGNAME] = log_name
     for col_index in column_names:
         data_list[col_index] = col_index.title()
 
     return data_list
 
 
-def load_generator(input_data: dict):
+def load_generator(input_data: dict, node_type):
     data_list = ''
-    path = input_data.pop('path')
-    log_name = input_data.pop('log_name')
+    path = input_data.pop(cn.PATH)
+    log_name = input_data.pop(cn.LOGNAME)
     for data in input_data.keys():
         if 'time' in data:
             data_list += ', {}: datetime(line.{})'.format(
@@ -192,7 +208,7 @@ def load_generator(input_data: dict):
         else:
             data_list += ', {}: line.{}'.format(input_data[data], data)
 
-    load_query = f'LOAD CSV WITH HEADERS FROM "file:///{path}" as line CREATE (e:Event {{Log: "{log_name}" {data_list} }})'
+    load_query = f'LOAD CSV WITH HEADERS FROM "file:///{path}" as line CREATE (e:{node_type} {{Log: "{log_name}" {data_list} }})'
 
     data = data_list.split(', ')
     data.pop(0)  # the first occurrence is empty
