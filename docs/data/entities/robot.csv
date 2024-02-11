@@ -1,0 +1,4 @@
+entity_id,type,movement
+drone,robot,air
+tractor_1,robot,ground
+tractor_2,robot,ground

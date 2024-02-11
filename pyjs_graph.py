@@ -43,6 +43,9 @@ class MRSGraph:
         '''
         self.session.run(queries.CREATE_CORR_REL)
         
+    def create_df(self, ent_id):
+        self.session.run(queries.NODE_DF, entitytype=ent_id)
+        
     
     '''
     def create_entity(self, entity_name):
@@ -62,21 +65,33 @@ class MRSGraph:
                          entity_data = entity_data, 
                          entity_type = entity_type)
 
-    def init_ekg(self):
+    def init_ekg(self, activity_slider, entities_sliders):
         '''
         Initializes the nodes of the Event Knowledge Graph
 
         @return: the desired relationship type between nodes
         '''
-        self.session.run(queries.CHANGE_ENTITY_VISIBILITY)
-        self.session.run(queries.CLEAR_CLASSES)
+        #self.session.run(queries.CHANGE_ENTITY_VISIBILITY)
+        #self.session.run(queries.CLEAR_CLASSES)
         type_id = ElementType.EVENT
-        actagg = self.activity_abstraction[cn.ACTIVITY]['selected_step']
-        if int(actagg) == 1:
-            self.aggregate_activities(self.robot_abstraction)
+        #actagg = self.activity_abstraction[cn.ACTIVITY]['selected_step']
+        activity_s = activity_slider[cn.ACTIVITY]
+        id_act_step = int(activity_s[cn.THIS_STEP]) 
+        act_agg = activity_s[cn.STEPS][id_act_step - 1]
+        
+        # if there is an aggregation for the activity property
+        if id_act_step != len(activity_s[cn.STEPS]):
+            ent_val = self.entity_aggregation(entities_sliders)
+            self.aggregate_activities(act_agg, ent_val)
             type_id = ElementType.CLASS
+        
+        #if int(actagg) == 1:
+        #    self.aggregate_activities(self.robot_abstraction)
+        #    type_id = ElementType.CLASS
 
-        self.session.run(queries.GET_NODES, type=type_id)
+        n = self.session.run(queries.GET_NODES, type=type_id)
+        
+        self.nodes = n.data()
 
         relationship = 'DF'
 
@@ -86,33 +101,48 @@ class MRSGraph:
         relationship_out = self.event_rel_extraction(type_id, relationship)
         return relationship_out
 
-    def aggregate_activities(self, robot_abstraction):
+    def aggregate_activities(self, act_agg, ent_val):
         '''
         Creates aggregation classes based on the level of abstraction given as input
         @parameter :robot_abstraction: defines the abstraction level chosen by the user
-        '''
-        aggregation_perspectives = []
-        if robot_abstraction == 1:
-            aggregation_perspectives = [cn.ACTIVITY, 'Robot']
-        if robot_abstraction == 2:
-            aggregation_perspectives = [cn.ACTIVITY, 'Robot.rtype']
-        elif robot_abstraction == 3:
-            aggregation_perspectives = [cn.ACTIVITY]
+        '''            
+        aggps = [act_agg, 'robot']
 
         res_query = queries.query_aggregation_generator(
-            aggregation_perspectives, ';'.join(aggregation_perspectives))
+            aggps, ';'.join(aggps))
         self.session.run(res_query)
         print(res_query)
 
+    def entity_aggregation(self, entity_sliders):
+        entities_val = {}
+        for entity in entity_sliders:
+            curr_slider = entity_sliders[entity]
+            curr_id = int(curr_slider[cn.THIS_STEP])
+            curr_val = curr_slider[cn.STEPS][curr_id - 1]
+            entities_val[entity] = curr_val
+            
+            #query_out = self.session.run(queries.GET_ENTITY_VALUES, entity_type = entity, type = curr_val)
+            
+            #result = pd.DataFrame(query_out.data())
+            #ent_values = result['values'].tolist()
+            #entities_val[entity] = ent_values
+            
+            self.session.run(queries.CREATE_SUPER_ENTITY, entity_type = entity, agg_type = curr_val)
+            self.session.run(queries.CREATE_SOBS_ENTITY, entity_type = entity, agg_type = curr_val)
+            
+        return entities_val       
+        
     def event_rel_extraction(self, node_type: str, relationship: str):
         '''
         Creates a relationship between events based on the input parameters
         @parameter :node_type: to distinguish Events from Classes
         @parameter :relationship: defines the label of the relationship that will be created
         '''
-        res_nodes = self.session.run(queries.GET_NODE_DATA)
+        #res_nodes = self.session.run(queries.GET_NODE_DATA)
+        
+        #ciao = res_nodes.data()
 
-        self.nodes = extract_nodes(res_nodes.data(), self.perspectives)
+        #self.nodes = extract_nodes(ciao, self.perspectives)
 
         if node_type == 'Class':
             # append _C suffix to identify the relation between classes
@@ -175,12 +205,15 @@ class MRSGraph:
         self.activity_abstraction = activity_agg
         self.perspectives = perspectives_agg
         
-        relationship_type = self.init_ekg()
+        relationship_type = self.init_ekg(activity_slider=activity_agg, entities_sliders=perspectives_agg)
         
         resp = self.session.run(
             queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
         self.edges = pd.DataFrame(resp.data())
         
+        self.nodes = pd.DataFrame(self.nodes)
+        
+        return {'nodes': self.nodes, 'edges': self.edges}
         
 
     def generate_graph(self, robot_abstraction, activity_abstraction, perspectives, communication):

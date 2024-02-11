@@ -9,10 +9,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
     <script type="text/javascript" src="{{ url_for('static', filename='js/script.js') }}">    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/svg.js@2.7.1/dist/svg.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
@@ -22,10 +18,8 @@
 
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg tool">
-        <div class="container">
-            <span class="navbar-brand">Multi-Query Aggregation</span>
-        </div>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-light justify-content-center shadow-sm tool">
+        <h1 class="navbar-brand">EKG-discovery</h1>
     </nav>
     <!-- SLIDERS-->
     <div class="container  mt-4">
@@ -74,13 +68,13 @@
                             </div>
                         </div>
                     </div>
+                    <!--
                     <div class="col-md-2">
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title"> Edge View</h5>
                                 <div class="row">
                                     <label class="p" for="edge_msg">PERSPECTIVE ID:</label>
-                                    <!-- Change the input type to a switch -->
                                     <div class="form-check form-switch">
                                         <input type="checkbox" id="activity_switch" name="activity_switch"
                                             class="form-check-input">
@@ -89,7 +83,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div>-->
                     </div>
                 </div>
                 <div class="row">
@@ -101,19 +95,28 @@
         <div class="row" id="analysis">
         </div>
 
-
-        <div id="ekg">
+        <div class="row">
+            <div class="d-flex justify-content-end mb-3">
+                <div class="btn-group">
+                    <!-- Toggle Graph Direction Button -->
+                    <button id="toggle-button" class="btn btn-outline-secondary" title="Change Graph Direction"><i
+                            class="fa fa-repeat" aria-hidden="true"></i> Toggle Direction
+                    </button>
+                    <!-- Download SVG Button -->
+                    <button onclick="downloadGraph()" class="btn btn-outline-secondary" title="Download SVG"><i
+                            class="fa fa-download" aria-hidden="true"></i> Download SVG
+                    </button>
+                </div>
+            </div>
+            <!-- Graph Container -->
             <div id="graph-container"></div>
-
-            <div class="row frame-graph" id="cyto"> </div>
-            <button class="btn btn-primary" onclick="downloadEKG()"><i class="fa fa-download"></i> Export as
-                SVG</button>
-
-            <script>
-                const response_data = {{ response_data|default ("") | tojson }}
-                generate_dagre(response_data)
-            </script>
         </div>
+
+
+        <script>
+            const response_data = {{ response_data|default ("") | tojson }}
+            generate_dagre(response_data)
+        </script>
     </div>
 
 </body>

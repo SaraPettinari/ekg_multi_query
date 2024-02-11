@@ -5,37 +5,41 @@ import scripts.constants as cn
 GET_NODES = """
                 MATCH (e)
                 WHERE $type in LABELS(e)
-                SET e.visibility = true
                 RETURN e
             """
 
 GET_EDGE_DATA = """
             MATCH (e)-[rel]->(e1)
             WHERE e.visibility = true AND e1.visibility = true
-            RETURN e.Event_Id as source, e1.Event_Id as destination, type(rel) as edge_label, properties(rel) as edge_properties
+            RETURN e.Event_Id as from, e1.Event_Id as to, type(rel) as label, properties(rel) as edge_properties
             """
 
 GET_EDGE_DATA_TYPED = """
             MATCH (e)-[rel]->(e1)
-            WHERE e.visibility = true AND e1.visibility = true AND type(rel) = $rel_type
-            RETURN e.Event_Id as source, e1.Event_Id as destination, type(rel) as edge_label, properties(rel) as edge_properties
+            WHERE type(rel) = $rel_type
+            RETURN e.Event_Id as from, e1.Event_Id as to, type(rel) as label, properties(rel) as edge_properties
             """
+
+#GET_NODE_DATA = """
+#            MATCH (e)
+#            WHERE e.visibility = true
+#            RETURN e
+#            """
 
 GET_NODE_DATA = """
             MATCH (e)
-            WHERE e.visibility = true
             RETURN e
             """
 
 # DF relation between events from the same resource
 NODE_DF = """
             MATCH (n:Entity)<-[:CORR]-(e)
-            WHERE n.EntityType = $entitytype
-            WITH n, e AS nodes ORDER BY e.Time, ID(e)
+            WHERE n.type = $entitytype
+            WITH n, e AS nodes ORDER BY e.time, ID(e)
             WITH n, collect(nodes) AS event_node_list
             UNWIND range(0, size(event_node_list)-2) AS i
             WITH n, event_node_list[i] AS e1, event_node_list[i+1] AS e2
-            MERGE (e1)-[df:DF {CorrelationType:n.EntityType, ID:n.ID, edge_weight: 1}]->(e2)
+            MERGE (e1)-[df:DF {CorrelationType:n.type, ID:n.entity_id, edge_weight: 1}]->(e2)
             """
 
 # DF relation without resource distinction
@@ -101,10 +105,10 @@ SET_NODE_COMM = """
             WHERE e2.Msg_Role = 'receive'
             WITH e2, last(event_list) as e1, m
             MERGE (e1)-[comm:COMM {CorrelationType:m.EntityType, ID:m.ID, edge_weight: 1}]->(e2)
-            SET e1.visibility = true
-            SET e2.visibility = true
-            """
 
+            """
+           # SET e1.visibility = true
+           # SET e2.visibility = true
 
 # aggregated activities
 # @param :rel_type: matching relationship type
@@ -176,7 +180,29 @@ ADD_START_ENTITY_NODE = """
                     WHERE e.Robot = $robot 
                     RETURN e ORDER BY e.Time LIMIT 1
                     """
+                    
+GET_ENTITY_VALUES = """
+                        MATCH (n:Entity)
+                        WHERE n.type = $entity_type
+                        UNWIND n[$type] AS values
+                        WITH DISTINCT values
+                        RETURN values
+                    """
+                    
+CREATE_SUPER_ENTITY = """
+                        MATCH (n:Entity)
+                        where n.type = $entity_type
+                        with distinct n[$agg_type] as value
+                        MERGE ( sn : SEntity { Name:value, Type:"SuperEntity", ID: value, Type : $entity_type })
+                        """
 
+CREATE_SOBS_ENTITY = """
+                    MATCH ( sn : SEntity )
+                    WHERE sn.Type = $entity_type
+                    MATCH ( n : Entity )
+                    WHERE sn.Name = n[$agg_type]
+                    MERGE ( n ) -[:OBSERVED]-> ( sn )
+                    """
 
 class ElementType():
     EVENT = 'Event'
@@ -221,6 +247,42 @@ def load_generator(input_data: dict, node_type):
     return load_query
 
 
+def test_class():
+    # Dovrei controllare per ogni evento correlato ad n entità, che quelle entità condividono una stessa proprietà
+    """
+        MATCH (n:Entity)
+        UNWIND n.$type AS char
+        WITH DISTINCT char
+        RETURN char
+    """
+    
+    """
+        MATCH (n:Entity)
+        UNWIND n.movement AS char
+        WITH DISTINCT char
+        MATCH (e:Event)-[:CORR]->(n:Entity)
+        WHERE n.movement = char
+        with distinct e.activity as actName, char
+        MERGE ( c : Class { Name: actName, Type:"Activity", EntID: char})
+    """
+    
+    """
+        MATCH (n:Entity)
+        UNWIND n.movement AS char
+        WITH DISTINCT char
+        MATCH (e:Event)-[:CORR]->(n:Entity)
+        WHERE n.movement = char
+        with distinct e.activity as actName, char
+        MERGE ( c : Class { Name: actName, Type:"Activity", EntID: char})
+    """
+
+    """
+        MATCH ( c : Class )
+        MATCH ( e : Event )
+        WHERE c.Name = e.activity
+        CREATE ( e ) -[:OBSERVED]-> ( c )
+    """
+
 def query_aggregation_generator(matching_perspectives: list, class_type: str):
     main_query = 'MATCH (e:Event)\n'
     with_query = 'WITH distinct '
@@ -248,8 +310,8 @@ def query_aggregation_generator(matching_perspectives: list, class_type: str):
 
     main_query += with_query + '\n' + class_creation + '\n' + 'WITH c' + '\n' + \
         match_class_type + '\n' + match_event_class + \
-        '\n' + 'MERGE (e) -[:OBSERVED]-> (c) \n' + \
-        'SET c.visibility = true \n SET e.visibility = false'
+        '\n' + 'MERGE (e) -[:OBSERVED]-> (c)' 
+        #+ \ 'SET c.visibility = true \n SET e.visibility = false'
 
     # print(main_query)
     return main_query

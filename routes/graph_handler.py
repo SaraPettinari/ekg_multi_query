@@ -69,7 +69,8 @@ def entity_uploader():
             session[cn.ENTITIES][curr_ent] = columns
             # uploads entity data into neo4j db and create CORR relationship
             ekg.load_data(load_query)
-            ekg.create_corr()        
+            ekg.create_corr()
+            ekg.create_df(curr_ent)        
             
     return graph()
             
@@ -77,24 +78,24 @@ def entity_uploader():
 @graph_handler.route('/set_graph', methods=["POST"])
 def graph():
     '''
-    Returns the slider interface (based on the chosen perspectives) 
+    Returns: 
+    - rendering of the slider interface 
     '''
     entity_list = session[cn.ENTITIES].keys()
-    perspective_dict = {}
-    for perspective in entity_list:
-        columns = session[cn.ENTITIES][perspective]
+    slider_dict = {}
+    for entity in entity_list:
+        columns = session[cn.ENTITIES][entity]
         steps = utils.put_value_in_last_position(columns, cn.ENT_TYPE)
-        # TODO automatize this selection
-        # (index of the slider step, [two basic type of aggregation, can be integrated with new ones])
-        perspective_dict[perspective] = { cn.THIS_STEP: 1, cn.STEPS: steps }
-    session[cn.SLIDERS] = perspective_dict
+        # Creation of Entity type slider steps based on the characteristics of each entity type
+        slider_dict[entity] = { cn.THIS_STEP: 1, cn.STEPS: steps }
+    session[cn.SLIDERS] = slider_dict
 
     # TODO automatize this selection
     #activity_id_aggregation = ['Identity', 'Predecessor identity', 'Successor identity', 'Neighbors identity', 'None']
-    activity_id_aggregation = ['Activity_Id', 'None']
+    activity_id_aggregation = ['activity', 'event_id']
     
     session[cn.ACTIVITY] = { cn.ACTIVITY: {
-        'selected_step': 1, 'steps': activity_id_aggregation
+        cn.THIS_STEP: 1, cn.STEPS: activity_id_aggregation
     }}
 
     return render_template('ekg_gui.html')
@@ -105,11 +106,11 @@ def get_graph():
     '''
     Returns the event knowledge graph based on the slider data 
     '''
-    selected_perspectives = session[PERSPECTIVES]
+    selected_perspectives = session[cn.ENTITIES]
     for perspective in selected_perspectives.keys():
         slider_identifier = perspective + '_slider'
         slider = request.form[slider_identifier]
-        session[PERSPECTIVES][perspective]['selected_step'] = slider
+        session[cn.SLIDERS][perspective]['selected_step'] = slider
     #resource_slider_val = request.form["resource_slider"]
     activity_slider_val = request.form["activity_slider"]
     activity_id = list(session[cn.ACTIVITY])[0]
@@ -127,7 +128,7 @@ def get_graph():
     #result = ekg.generate_graph(activity_abstraction=activity_slider_val,
     #                            perspectives=selected_perspectives, communication=show_communication)
 
-    result = ekg.generate_graph_v2(perspectives_agg=session[PERSPECTIVES], activity_agg=session[cn.ACTIVITY])
+    result = ekg.generate_graph_v2(perspectives_agg=session[cn.SLIDERS], activity_agg=session[cn.ACTIVITY])
     
     nodes = result['nodes'].to_dict(orient='records')
     edges = result['edges'].to_dict(orient='records')
