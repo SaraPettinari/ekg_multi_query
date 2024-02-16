@@ -14,21 +14,24 @@ ekg = MRSGraph()
 # define a constant to retrieve data
 PERSPECTIVES = 'perspectives'
 
-@graph_handler.route('/data_uploader', methods=['POST'])
-def data_uploader():
+@graph_handler.route('/set_data', methods=['POST'])
+def set_data():
     if request.method == 'POST':
         form_data = request.form
         out_data = {}
         entity_list = []
+        session[cn.ENTITIES] = {}
 
         for el in form_data.keys():
             if 'entity' in el:
                 entity_name = el.replace('_entity', '')
                 entity_list.append(entity_name)
                 out_data[entity_name] = entity_name
+                session[cn.ENTITIES][entity_name] = ''
             elif 'd-' in el:
+                    value = form_data[el]
                     el = el.replace('d-', '')
-                    out_data[el] = el
+                    out_data[el] = value
             else:
                 out_data[el] = form_data[el]
 
@@ -41,8 +44,11 @@ def data_uploader():
         
         #session[cn.ENTITIES] = entity_list
         # check if some entities needs to be created
-        if len(entity_list) > 0:
+        skip_data_upload = 'skip_data' in out_data.keys()
+        if len(entity_list) > 0 and not skip_data_upload:
             return render_template('entity_data_generator.html', entity_list = entity_list)
+        elif skip_data_upload:
+            return entity_uploader()
         else:
             return graph()
             
@@ -50,32 +56,41 @@ def data_uploader():
 @graph_handler.route('/entity_uploader', methods=["POST"])
 def entity_uploader():
     if request.method == 'POST':
-        session[cn.ENTITIES] = {}
         file_list = request.files
-        for file in file_list:
-            curr_ent = file.replace('_file', '')
-            filename = secure_filename(file_list[file].filename)
-            logs_path = os.getcwd() + cn.ENTITY_PATH
-            if not os.path.exists(logs_path):
-                os.makedirs(logs_path)
-                final_path = logs_path + '/' + filename
-                file.save(final_path)
-            else:
-                final_path = logs_path + '/' + filename
-                
-            ent_data = utils.set_entity_data(final_path, log_name = filename)
-            load_query = ent_data['query']
-            columns = ent_data['columns']
-            session[cn.ENTITIES][curr_ent] = columns
-            # uploads entity data into neo4j db and create CORR relationship
-            ekg.load_data(load_query)
-            ekg.create_corr()
-            ekg.create_df(curr_ent)        
+        
+        if len(file_list) > 0:
+            for file in file_list:
+                curr_ent = file.replace('_file', '')
+                filename = secure_filename(file_list[file].filename)
+                logs_path = os.getcwd() + cn.ENTITY_PATH
+                if not os.path.exists(logs_path):
+                    os.makedirs(logs_path)
+                    final_path = logs_path + '/' + filename
+                    file.save(final_path)
+                else:
+                    final_path = logs_path + '/' + filename
+                    
+                ent_data = utils.set_entity_data(final_path, log_name = filename)
+                load_query = ent_data['query']
+                columns = ent_data['columns']
+                session[cn.ENTITIES][curr_ent] = columns
+                # uploads entity data into neo4j db and create CORR relationship
+                ekg.load_data(load_query)
+                ekg.create_corr(curr_ent)
+                ekg.create_df(curr_ent)        
+        else:
+            entities = session[cn.ENTITIES].keys()
+            for ent in entities:
+                resp = ekg.create_entity_from_events(entity_type=ent)
+                ent_values = resp[0]['keys(n)']
+                session[cn.ENTITIES][ent] = ent_values
+                ekg.create_corr(ent)
+                ekg.create_df(ent)
             
     return graph()
             
 
-@graph_handler.route('/set_graph', methods=["POST"])
+@graph_handler.route('/set_graph', methods=["GET", "POST"])
 def graph():
     '''
     Returns: 
@@ -138,3 +153,11 @@ def get_graph():
     # print(nodes)
     return render_template('ekg_gui.html', response_data=resp_graph)
 
+
+
+@graph_handler.route('/view/activity', methods=['GET'])
+def measurements_gui():
+    args = request.args
+    activity_name = args.get('activity_id')
+    session['current_activity'] = activity_name
+    return render_template('measurements_gui.html')

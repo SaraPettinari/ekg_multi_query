@@ -26,28 +26,6 @@ app.register_blueprint(graph_handler)
 def index():
     return render_template('log_uploader.html')
 
-'''
-TODO delete this method
-'''
-@app.route('/get_perspectives', methods=["GET"])
-def get_perspectives(entity_list):
-    '''
-    Extract the perspectives saved in the event log 
-    '''
-    driver = GraphDatabase.driver(**config.NEO4J)
-    with driver.session() as session:
-        res_nodes = session.run(queries.GET_NODES, type='Event').data()
-        params = []
-        # get the unique columns from all the events
-        for dictionary in res_nodes:
-            if 'e' in dictionary:
-                event_keys = dictionary['e'].keys()
-                for ek in event_keys:
-                    if not ek in params:
-                        params.append(ek)
-        params.sort()
-    return render_template('perspectives_selector.html', params = params, perspectives=entity_list, p_size=len(params))
-
 
 
 if __name__ == '__main__':

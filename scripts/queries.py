@@ -30,6 +30,12 @@ GET_NODE_DATA = """
             MATCH (e)
             RETURN e
             """
+            
+GET_ENTITY_DATA = """
+            MATCH (n:Entity)
+            WITH DISTINCT n.type AS tn, keys(n) as props
+            RETURN tn as type, props
+            """
 
 # DF relation between events from the same resource
 NODE_DF = """
@@ -72,11 +78,18 @@ CREATE_TYPED_ENTITY = """
                         MERGE (e)-[c:CORR]->(n)
                     """
                     
+CREATE_ENTITY_FROM_EVENTS = """                      
+                        MATCH (e:Event) 
+                        UNWIND e[$entity] AS entity_name
+                        WITH DISTINCT entity_name
+                        MERGE (n:Entity {entity_id:entity_name, type:$entity})
+                        RETURN keys(n) LIMIT 1
+                    """
+                    
 CREATE_CORR_REL = """
-                        MATCH (n:Entity)
-                        WITH n, n.entity_id as id, n.type as type
                         MATCH (e:Event)
-                        WHERE e[type] = id
+                        UNWIND e[$entity] AS entity_name
+                        MATCH (n:Entity {entity_id: entity_name})
                         MERGE (e)-[c:CORR]->(n)
                 """
 
@@ -141,7 +154,6 @@ CREATE_MULTI_SENDER = """
                         MERGE (node)-[:OBSERVED]->(s))
                 """
 
-
 MATCH_DF_MS_POST = """
                     MATCH (s:MultiSender)<-[:OBSERVED]-(e1:Event)-[r]->(e2:Event)
                     WHERE not ((e2)-[:OBSERVED]->(:MultiSender))
@@ -203,6 +215,24 @@ CREATE_SOBS_ENTITY = """
                     WHERE sn.Name = n[$agg_type]
                     MERGE ( n ) -[:OBSERVED]-> ( sn )
                     """
+
+# avoid DF relation between two receiver messages                    
+HANDLE_COMMUNICATION = """
+                    MATCH (e1:Event)-[df:DF {CorrelationType: 'msg_id'}]->(e2:Event)
+                    WHERE e1.activity = e2.activity AND e1.robot <> e2.robot
+                    WITH e1, e2, df, df.edge_weight as counter
+                    MATCH (e:Event)-[df2:DF {CorrelationType: 'msg_id'}]->(e1)
+                    WHERE e.activity <> e1.activity
+                    SET df2.edge_weight = df2.edge_weight + counter
+                    DELETE df
+                    """
+                    
+FIRST_NODES = """
+            MATCH (e:Event)
+            WITH e[$entity] AS ent, e
+            ORDER BY e.time
+            RETURN DISTINCT ent, collect(e)[0] AS first_event
+"""
 
 class ElementType():
     EVENT = 'Event'

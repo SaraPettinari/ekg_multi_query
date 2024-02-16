@@ -29,6 +29,14 @@ class MRSGraph:
                         MATCH (e:Event {Lifecycle: 'complete'})
                         DELETE e
                          """)
+        
+    def create_entity_from_events(self, entity_type):
+        '''
+        Create Entities
+        '''
+        response = self.session.run(queries.CREATE_ENTITY_FROM_EVENTS, entity = entity_type)
+        return response.data()
+
 
     def get_entity(self, entity_name):
         '''
@@ -37,14 +45,26 @@ class MRSGraph:
         result = self.session.run(queries.GET_ENTITY,  entity=entity_name)
         return result.data()
     
-    def create_corr(self):
+    
+    def get_entity_types(self):
+        '''
+        Get entity types list
+        '''
+        result = self.session.run(queries.GET_ENTITY_DATA)
+        return result.data()
+    
+    
+    def create_corr(self, entity_type):
         '''
         Create Correlation relationship
         '''
-        self.session.run(queries.CREATE_CORR_REL)
+        self.session.run(queries.CREATE_CORR_REL, entity = entity_type)
         
     def create_df(self, ent_id):
         self.session.run(queries.NODE_DF, entitytype=ent_id)
+        if 'msg' or 'message' in ent_id: # fix the DF rels if there is a correlation based on messages
+            self.session.run(queries.HANDLE_COMMUNICATION)
+            
         
     
     '''
@@ -129,7 +149,7 @@ class MRSGraph:
             
             self.session.run(queries.CREATE_SUPER_ENTITY, entity_type = entity, agg_type = curr_val)
             self.session.run(queries.CREATE_SOBS_ENTITY, entity_type = entity, agg_type = curr_val)
-            
+                        
         return entities_val       
         
     def event_rel_extraction(self, node_type: str, relationship: str):
@@ -209,6 +229,8 @@ class MRSGraph:
         
         resp = self.session.run(
             queries.GET_EDGE_DATA_TYPED, rel_type=relationship_type)
+        
+        
         self.edges = pd.DataFrame(resp.data())
         
         self.nodes = pd.DataFrame(self.nodes)

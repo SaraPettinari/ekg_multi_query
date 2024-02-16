@@ -34,7 +34,7 @@
                                 <h5 class="card-title"> Node Aggregation</h5>
                                 <div class="row">
                                     {% for key, value in session['activity'].items() %}
-                                    <label class="p" for="activity_slider">{{ key }}:</label>
+                                    <label class="p" for="activity_slider"><strong> {{ key }}: </strong></label>
                                     <input type="range" min="1" max="{{ value['steps']|length }}"
                                         value="{{ value['selected_step'] }}" step="1" id="activity_slider"
                                         list="event_values" name="activity_slider" class="slider" />
@@ -51,7 +51,7 @@
                                 <!-- Create a slider for each selected perspective -->
                                 {% for key, value in session['sliders'].items() %}
                                 <div class="row">
-                                    <label class="p" for="{{ key }}_slider">{{ key }}:</label>
+                                    <label class="p" for="{{ key }}_slider"><strong> {{ key }}: </strong></label>
                                     <input type="range" min="1" max="{{ value['steps']|length }}"
                                         value="{{ value['selected_step'] }}" step="1" id="{{ key }}_slider"
                                         list="{{ key }}_values" name="{{ key }}_slider" class="slider" />
@@ -84,39 +84,49 @@
                                 </div>
                             </div>
                         </div>-->
-                    </div>
                 </div>
-                <div class="row">
-                    <input type="submit" class="btn tool btn-tool" value="Show Graph" />
-                </div>
-            </form>
-
         </div>
-        <div class="row" id="analysis">
-        </div>
-
         <div class="row">
-            <div class="d-flex justify-content-end mb-3">
-                <div class="btn-group">
-                    <!-- Toggle Graph Direction Button -->
-                    <button id="toggle-button" class="btn btn-outline-secondary" title="Change Graph Direction"><i
-                            class="fa fa-repeat" aria-hidden="true"></i> Toggle Direction
-                    </button>
-                    <!-- Download SVG Button -->
-                    <button onclick="downloadGraph()" class="btn btn-outline-secondary" title="Download SVG"><i
-                            class="fa fa-download" aria-hidden="true"></i> Download SVG
-                    </button>
-                </div>
-            </div>
-            <!-- Graph Container -->
-            <div id="graph-container"></div>
+            <input type="submit" class="btn tool btn-tool" value="Show Graph" />
         </div>
+        </form>
+
+    </div>
+    <div class="row" id="analysis">
+    </div>
+
+    <div class="row">
+        <div class="d-flex justify-content-end mb-3">
+            <div class="btn-group">
+                <!-- Toggle Graph Direction Button -->
+                <button id="toggle-button" class="btn btn-outline-secondary" title="Change Graph Direction"><i
+                        class="fa fa-repeat" aria-hidden="true"></i> Toggle Direction
+                </button>
+                <!-- Download SVG Button -->
+                <button onclick="downloadGraph()" class="btn btn-outline-secondary" title="Download SVG"><i
+                        class="fa fa-download" aria-hidden="true"></i> Download SVG
+                </button>
+
+                <button class="btn btn-outline-dark" title="Please Discover Process" type="button"
+                    onclick="openNewTab()" id="measures">Measurements GUI</button>
+                <script>
+                    function openNewTab() {
+                        localStorage.setItem('sharedContent', document.getElementById('graph-container').innerHTML);
+                        window.open("{{ url_for('graph.measurements_gui') }}", "_blank");
+                    }
+                </script>
+            </div>
+        </div>
+        <!-- Graph Container -->
+        <div id="graph-container"></div>
+
+    </div>
 
 
-        <script>
-            const response_data = {{ response_data|default ("") | tojson }}
-            generate_dagre(response_data)
-        </script>
+    <script>
+        const response_data = {{ response_data|default ("") | tojson }}
+        generate_dagre(response_data)
+    </script>
     </div>
 
 </body>
