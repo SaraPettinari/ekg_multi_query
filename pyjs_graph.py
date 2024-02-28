@@ -7,6 +7,7 @@ import scripts.config as config
 import datetime
 import json
 import scripts.constants as cn
+import scripts.perspective_handler as ph
 
 
 class MRSGraph:
@@ -26,7 +27,12 @@ class MRSGraph:
         self.session.run(load_query)
 
         self.session.run(""" 
-                        MATCH (e:Event {Lifecycle: 'complete'})
+                        MATCH (e:Event {lifecycle: 'complete'})
+                        DELETE e
+                         """)
+        
+        self.session.run(""" 
+                        MATCH (e:Event {state: 'inprogress'})
                         DELETE e
                          """)
         
@@ -296,6 +302,18 @@ class MRSGraph:
         return {'nodes': self.nodes, 'edges': self.edges}
 
 
+    def get_space(self, activity = None, robot = None):
+        if activity == None and robot == None:
+            resp = self.session.run(ph.GET_SPACE)
+            data = resp.data()
+        else:
+            resp = self.session.run(ph.GET_SPACE_PARAM, activity = activity, robot = robot)
+            data = resp.data()
+            
+        ph.generate_graph(data)
+        return data
+    
+
 def extract_nodes(nodes, perspectives):
     '''
         Generates the dataframes with data related to EKG nodes and edges
@@ -329,6 +347,9 @@ def extract_nodes(nodes, perspectives):
         return set_curr_nodes
     else:
         return curr_nodes
+    
+    
+    
 
 
 def neo_datetime_conversion(Time):

@@ -98,7 +98,7 @@ text {
 
 #graph-container {
 	width: 100%;
-	height: 600px;
+	height: 2000px;
 }
 
 svg {
@@ -112,4 +112,12 @@ svg {
 	stroke-dasharray: 5, 5;
 	/* Set the stroke dash pattern (5 units of dash, 5 units of gap) */
 	/* You can adjust the dash and gap lengths as needed */
+}
+
+a:link {
+	text-decoration: none;
+}
+
+a:visited {
+	color: white;
 }

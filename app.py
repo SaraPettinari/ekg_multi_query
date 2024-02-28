@@ -1,10 +1,6 @@
+import os
 from flask import Flask, render_template
 from flask_bootstrap import Bootstrap
-import os
-import scripts.queries as queries
-import scripts.config as config
-from neo4j import GraphDatabase
-
 from routes.data_uploader import data_uploader
 from routes.graph_handler import graph_handler
 

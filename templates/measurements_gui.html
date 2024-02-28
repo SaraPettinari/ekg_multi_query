@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head lang="en">
+    {% block head %}
+    <title>Tale Miner</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src='https://cdn.plot.ly/plotly-2.9.0.min.js'></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+        integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- JavaScript -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js"
+        integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/script.js') }}">    </script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre-d3@0.6.4/dist/dagre-d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-zoom@3.0.0/dist/d3-zoom.min.js"></script>
+    {% endblock %}
+    <style>
+        body {
+            padding-top: 60px;
+        }
+
+        #graph-container {
+            margin-top: 20px;
+        }
+
+        #toggle-button,
+        #download-button {
+            margin-left: 10px;
+        }
+
+        .card {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-light justify-content-center shadow-sm fixed-top">
+        <h1 class="navbar-brand">TaleMiner</h1>
+    </nav>
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <div class="col-md-6 card">
+                <div class="d-flex justify-content-end mb-3">
+                    <div class="btn-group">
+                        <button id="toggle-button" class="btn btn-outline-secondary" title="Change Graph Direction"><i
+                                class="fa fa-repeat" aria-hidden="true"></i>
+                        </button>
+                        <button onclick="downloadGraph()" class="btn btn-outline-secondary" title="Download SVG"><i
+                                class="fa fa-download" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="graph-container"></div>
+            </div>
+
+            <!-- Query over activities -->
+            <div hidden class="col-4">
+                <form action="{{ url_for('graph.measurements_gui') }}" method="GET">
+                    <input id="activity_id" name="activity_id" value="" />
+                    <div id="activity_space">
+                        <input id="space" name="space" value="" />
+                        <input id="see_space_graph" type="submit" />
+                    </div>
+                    <div id="activity_time">
+                        <input id="time" name="time" value="" />
+                        <input id="see_time_graph" type="submit" />
+                    </div>
+                    <!--    <div id="activity_energy">
+                        <input id="energy" name="energy" value="" />
+                        <input id="see_energy_graph" type="submit" />
+                    </div> -->
+                </form>
+            </div>
+            <!-- Context menu -->
+            <div id="context-menu" class="context-menu">
+                <div class="context-menu-title">Measures</div>
+                <div id="space-menu" class="context-menu-option">Space</div>
+                <div id="time-menu" class="context-menu-option">Time</div>
+                <!--    <div id="energy-menu" class="context-menu-option">Energy</div> -->
+            </div>
+
+            <div class="col-md-6">
+                <div class="col">
+                    <div id="comm_div" class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Communication Perspective</h5>
+                            <!--<label class="toggle">
+                                <input type="checkbox">
+                                <span class="slider"></span>
+                                <span class="labels" data-on="3D" data-off="Heatmap"></span>
+                            </label>-->
+                            {% include session.communication %}
+                        </div>
+                    </div>
+                </div>
+                {% if session.plot_file %}
+                <div class="row">
+                    {% set activity_plots = session.plot_file[session.current_activity] %}
+                    {% if activity_plots.space %}
+                    <div class="col">
+                        <div id="space_div" class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Space Perspective</h5>
+                                <!--<label class="toggle">
+                                    <input type="checkbox">
+                                    <span class="slider"></span>
+                                    <span class="labels" data-on="3D" data-off="Heatmap"></span>
+                                </label>-->
+                                {% include activity_plots.space %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if activity_plots.time %}
+                    <div class="col">
+                        <div id="time_div" class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Time Perspective</h5>
+                                {% include activity_plots.time %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <!--    {% if activity_plots.battery %}
+                    <div class="col">
+                        <div id="battery_div" class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Battery Perspective</h5>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}-->
+                </div>
+                {% endif %}
+                <div class="row">
+                    <div class="col">
+                    <div class="card"></div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const response_data = {{ session.response_data|default ("") | tojson }};
+        generate_dagre(response_data);
+    </script>
+</body>
+
+</html>

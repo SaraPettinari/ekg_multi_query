@@ -19,6 +19,7 @@ def set_data():
     if request.method == 'POST':
         form_data = request.form
         out_data = {}
+        data_list = []
         entity_list = []
         session[cn.ENTITIES] = {}
 
@@ -26,8 +27,12 @@ def set_data():
             if 'entity' in el:
                 entity_name = el.replace('_entity', '')
                 entity_list.append(entity_name)
-                out_data[entity_name] = entity_name
+                #out_data[entity_name] = entity_name
                 session[cn.ENTITIES][entity_name] = ''
+            elif 'data' in el:
+                data_name = el.replace('_data', '')
+                data_list.append(data_name)
+                out_data[data_name] = data_name
             elif 'd-' in el:
                     value = form_data[el]
                     el = el.replace('d-', '')
@@ -44,7 +49,7 @@ def set_data():
         
         #session[cn.ENTITIES] = entity_list
         # check if some entities needs to be created
-        skip_data_upload = 'skip_data' in out_data.keys()
+        skip_data_upload = 'skip_upload' in out_data.keys()
         if len(entity_list) > 0 and not skip_data_upload:
             return render_template('entity_data_generator.html', entity_list = entity_list)
         elif skip_data_upload:
@@ -155,9 +160,10 @@ def get_graph():
 
 
 
-@graph_handler.route('/view/activity', methods=['GET'])
+@graph_handler.route('/view/data', methods=['GET'])
 def measurements_gui():
     args = request.args
     activity_name = args.get('activity_id')
+    ekg.get_space()
     session['current_activity'] = activity_name
     return render_template('measurements_gui.html')

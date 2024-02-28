@@ -1,4 +1,4 @@
-time,activity,lifecycle,msg_id,msg_payload,msg_role,x,y,z,field,resource,event_id
+time,activity,lifecycle,msg_id,msg_payload,msg_role,x,y,z,field,robot,event_id
 2023-05-16T10:27:08.918+0100,takeoff,start,,,,0.0,4.908918857077574,0.0,f4,drone,e0
 2023-05-16T10:27:09.972+0100,takeoff,complete,,,,0.0,4.908918857077574,1.429148219416987,f4,drone,e1
 2023-05-16T10:27:09.972+0100,explore,start,,,,0.0,4.908918857077574,1.4400898301778375,f4,drone,e2

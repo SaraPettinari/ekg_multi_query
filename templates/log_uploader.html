@@ -103,7 +103,7 @@
                                     <thead>
                                         <tr>
                                             <th>Data Columns</th>
-                                            <!--    <th>Desired Identifier</th>-->
+                                            <th>Store Value</th>
                                             <th>Entity?</th>
                                         </tr>
                                     </thead>
@@ -115,9 +115,9 @@
                                         <input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}" hidden>
                                         {% else %}
                                         <tr>
-                                            <!--    <td><input type="text" id="{{ value }}" name="{{ key }}" value="{{ value }}"
-                                                class="form-control"></td>-->
                                             <td><label for="{{ value }}">{{ key }}</label></td>
+                                            <td><input class="form-check-input checkbox" type="checkbox"
+                                                    id="{{ key }}_data" name="{{ key }}_data"></td>
                                             <td><input class="form-check-input checkbox" type="checkbox"
                                                     id="{{ key }}_entity" name="{{ key }}_entity"></td>
                                         </tr>
@@ -135,8 +135,8 @@
 
                 <div class="row">
                     <div class="col-md-6 mx-auto">
-                        <input type="checkbox" id="skip_data" name="skip_data" value="EntData">
-                        <label for="skip_data"> Skip Entity Data</label><br>
+                        <input type="checkbox" id="skip_upload" name="skip_upload" value="EntData">
+                        <label for="skip_upload"> Skip Entity Data</label><br>
                     </div>
                     <div class="col-md-6 mx-auto">
                         <button type="submit" class="btn tool btn-tool">Upload</button>
@@ -153,7 +153,8 @@
                 <p class="text-tool">Your DB has been successfully cleaned!</p>
                 {% else %}
                 <p>Delete old DB?</p>
-                <a class="btn tool btn-tool" href="{{ url_for('uploader.delete_db') }}">Click Here <i class="fa fa-trash" aria-hidden="true"></i>
+                <a class="btn tool btn-tool" href="{{ url_for('uploader.delete_db') }}">Click Here <i
+                        class="fa fa-trash" aria-hidden="true"></i>
                 </a>
                 {% endif %}
             </div>
@@ -162,7 +163,8 @@
         <div class="row mt-2">
             <div class="col-md-6 mx-auto text-center">
                 <p>DB Ready?</p>
-                <a class="btn tool btn-tool" href="{{ url_for('uploader.db_ready') }}">Go <i class="fa fa-arrow-right" aria-hidden="true"></i> </a>
+                <a class="btn tool btn-tool" href="{{ url_for('uploader.db_ready') }}">Go <i class="fa fa-arrow-right"
+                        aria-hidden="true"></i> </a>
             </div>
         </div>
         {% endif %}
@@ -173,6 +175,8 @@
         // entity checkbox is disabled if the element has been selected in the mapping area
         function updateCheckboxes(selectElement) {
             var selectedValue = selectElement.value + '_entity';
+            var selectedData = selectElement.value + '_data';
+
             var checkboxes = document.querySelectorAll('.checkbox');
             var allSelects = document.querySelectorAll('.form-select');
 
@@ -181,8 +185,16 @@
             console.log(selectCheck);
 
             checkboxes.forEach(checkbox => {
-                var name = checkbox.name.replace('_entity', '');
-                checkbox.disabled = selectCheck.includes(name);
+                if (checkbox.name.includes('entity')) {
+                    var name = checkbox.name.replace('_entity', '');
+                    checkbox.disabled = selectCheck.includes(name);
+                }
+                if (checkbox.name.includes('data')) {
+                    var name = checkbox.name.replace('_data', '');
+                    //checkbox.checked = selectCheck.includes(name);
+                    checkbox.disabled = selectCheck.includes(name);
+                }
+
             });
         }
     </script>
