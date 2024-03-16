@@ -1,0 +1,8 @@
+Flask==2.2.2
+Flask_Bootstrap==3.3.7.1
+neo4j==5.18.0
+neo4j_driver==5.0.1
+pandas==1.4.1
+plotly==5.6.0
+promg==0.1.41
+Werkzeug==2.2.3
