@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, session
 from scripts.promg_handle import *
-from pyjs_graph import MRSGraph
+from ekgraph_lib import EKGraph
 from werkzeug.utils import secure_filename
 
 import scripts.queries as queries
@@ -9,10 +9,7 @@ import scripts.utils as utils
 
 graph_handler = Blueprint("graph", __name__)
 
-ekg = MRSGraph()
-
-# define a constant to retrieve data
-PERSPECTIVES = 'perspectives'
+ekg = EKGraph()
 
 @graph_handler.route('/set_data', methods=['POST'])
 def set_data():
@@ -81,16 +78,16 @@ def entity_uploader():
                 session[cn.ENTITIES][curr_ent] = columns
                 # uploads entity data into neo4j db and create CORR relationship
                 ekg.load_data(load_query)
-                ekg.create_corr(curr_ent)
-                ekg.create_df(curr_ent)        
+                ekg.set_corr(curr_ent)
+                ekg.set_df(curr_ent)        
         else:
             entities = session[cn.ENTITIES].keys()
             for ent in entities:
-                resp = ekg.create_entity_from_events(entity_type=ent)
+                resp = ekg.set_entity_from_events(entity_type=ent)
                 ent_values = resp[0]['keys(n)']
                 session[cn.ENTITIES][ent] = ent_values
-                ekg.create_corr(ent)
-                ekg.create_df(ent)
+                ekg.set_corr(ent)
+                ekg.set_df(ent)
             
     return graph()
             
@@ -131,24 +128,12 @@ def get_graph():
         slider_identifier = perspective + '_slider'
         slider = request.form[slider_identifier]
         session[cn.SLIDERS][perspective]['selected_step'] = slider
-    #resource_slider_val = request.form["resource_slider"]
+
     activity_slider_val = request.form["activity_slider"]
     activity_id = list(session[cn.ACTIVITY])[0]
     session[cn.ACTIVITY][activity_id]['selected_step'] = activity_slider_val
-
-    '''
-    communication_slider_val = request.form["edge_msg"]
-    resource_edge_val = request.form["edge_robot"]
-
-    if int(communication_slider_val) == 1:
-        show_communication = True
-        #communication_slider_val = request.form["msg_slider"]
-    '''
     
-    #result = ekg.generate_graph(activity_abstraction=activity_slider_val,
-    #                            perspectives=selected_perspectives, communication=show_communication)
-
-    result = ekg.generate_graph_v2(perspectives_agg=session[cn.SLIDERS], activity_agg=session[cn.ACTIVITY])
+    result = ekg.generate_graph_v2(entities_agg=session[cn.SLIDERS], activity_agg=session[cn.ACTIVITY])
     
     nodes = result['nodes'].to_dict(orient='records')
     edges = result['edges'].to_dict(orient='records')
@@ -165,5 +150,6 @@ def measurements_gui():
     args = request.args
     activity_name = args.get('activity_id')
     ekg.get_space()
+    session['communication'] = ''
     session['current_activity'] = activity_name
     return render_template('measurements_gui.html')

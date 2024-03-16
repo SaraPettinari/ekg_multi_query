@@ -5,7 +5,7 @@ import scripts.constants as cn
 
 from flask import Blueprint, render_template, request, session, redirect, url_for
 from werkzeug.utils import secure_filename
-from pyjs_graph import MRSGraph
+from ekgraph_lib import EKGraph
 
 
 data_uploader = Blueprint("uploader", __name__)
@@ -19,7 +19,7 @@ def delete_db():
 
 @data_uploader.route('/db_ready', methods=["GET"])
 def db_ready():
-    ekg = MRSGraph()
+    ekg = EKGraph()
         
     result = ekg.get_entity_types()
     if not cn.ENTITIES in session.keys():
