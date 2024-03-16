@@ -167,10 +167,24 @@ class EKGraph:
         self.edges = pd.DataFrame(res.data())
         self.nodes = pd.DataFrame(self.nodes)
         
-        start_nodes = []
         for ent in self.curr_entities:
             start_node = self.session.run(queries.get_start_nodes('Class', ent))
-            start_nodes.append(start_node.data())
+            node = start_node.data()
+            for n in node:
+                entity = n['entity']
+                related_node = n['start'][cn.EVENT_ID]
+                
+                this_node = n['start'].copy()
+                
+                for key in this_node:
+                    this_node[key] = entity
+                this_node['Type'] = ent       
+
+                self.nodes.loc[len(self.nodes)] = {'e': this_node}
+                
+                this_edge = {'from': entity, 'to': related_node, 'label': 'start', 'edge_properties': ''}
+                self.edges.loc[len(self.edges)] = this_edge
+            
         
         return {'nodes': self.nodes, 'edges': self.edges}
         

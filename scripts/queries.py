@@ -173,9 +173,17 @@ def get_nodes_typed(type):
  
 # Retrieve start nodes for an entity type
 def get_start_nodes(node_type, entity_type):
-    query = f""" MATCH (n:{node_type})-[:CORR]->(ent:Entity)
+    if node_type == ElementType.EVENT:
+        query = f""" MATCH (n:{node_type})-[:CORR]->(ent:Entity)
                 WHERE NOT (n)<-[:DF {{Type: '{entity_type}'}}]-() AND ent.type = '{entity_type}'
-                RETURN n as start_node, n.{entity_type} as entity
+                RETURN n as start, n.{entity_type} as entity
+            """
+    elif node_type == ElementType.CLASS:
+        query = f""" MATCH (n:Event)-[:CORR]->(ent:Entity)
+                WHERE NOT (n)<-[:DF {{Type: '{entity_type}'}}]-() AND ent.type = '{entity_type}'
+                WITH n as start_node, n.{entity_type} as entity
+                MATCH (start_node)-[:OBSERVED]->(c:Class)
+                RETURN c as start, entity
             """
     return query
 

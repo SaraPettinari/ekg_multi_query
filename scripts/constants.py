@@ -12,6 +12,8 @@ LOGNAME = 'log_name'
 
 ENT_ID ='entity_id'
 ENT_TYPE ='type'
+EVENT_ID = 'Event_Id' 
+
 
 SLIDERS = 'sliders'
 THIS_STEP = 'selected_step'

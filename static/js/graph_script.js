@@ -4,7 +4,6 @@ var globSVGroup = ''
 
 
 function generate_dagre(data) {
-  console.log('data', data)
   nodes = []
   const nodeColors = [
     '#87CEFA', // Light sky blue
@@ -18,6 +17,10 @@ function generate_dagre(data) {
     '#FFA07A', // Light salmon
     '#FFB6C1', // Light pink
   ];
+
+  const edgeColors = [
+    '#1A1A1A', '#4B0082', '#8B0000', '#222222', '#800000', '#191970', '#333333', '#5C0120', '#444444', '#555555'
+  ]
 
   var g = new dagre.graphlib.Graph({
     multigraph: true,
@@ -57,59 +60,91 @@ function generate_dagre(data) {
     data.nodes.forEach(this_item => uniqueEnt.add(this_item.e[item]));
   });
 
-  var entities = Array.from(uniqueEnt)
-  
-  // Creating a dictionary from unique values mapped to pastel colors
-  const colorDict = {};
-  nodes_entities.forEach((value, index) => {
-    colorDict[value] = nodeColors[index];
+  // Get all the entities used in the aggregation
+  let start_nodes = (nodes) => {
+    let unique_values = [
+      ...new Set(nodes
+        .map((item) => item.e)
+        .filter(
+          (value) => value.Event_Id === value.activity
+        )
+        .map((item) => item.Type))
+    ]
+    return unique_values;
+  };
+
+  let entity_start_nodes = (nodes) => {
+    let unique_values = [
+      ...new Set(nodes
+        .map((item) => item.e)
+        .filter(
+          (value) => value.Event_Id === value.activity
+        )
+        .map((item) => item.Event_Id)
+      )
+    ]
+    return unique_values;
+  };
+
+  var uniqueEntityTypes = start_nodes(data.nodes);
+  var uniqueEntities = entity_start_nodes(data.nodes);
+
+  // Creating a dictionary from unique values mapped to colors
+  const colorDictNodes = {};
+
+  uniqueEntities.forEach((value, index) => {
+    colorDictNodes[value] = nodeColors[index];
+    if (index >= uniqueEntities.length) {
+      colorDictNodes[value] = generateRandomHexColor()
+    }
+  });
+
+  let entity_edges = (edge) => {
+    let unique_values = [
+      ...new Set(edge
+        .map((item) => item.edge_properties.Type)
+      )
+    ]
+    return unique_values;
+  };
+
+  var uniqueEntEdge = entity_edges(data.edges)
+  const colorDictEdges = {};
+
+  uniqueEntEdge.forEach((value, index) => {
+    colorDictEdges[value] = edgeColors[index];
+    if (index >= uniqueEntEdge.length) {
+      colorDictEdges[value] = generateRandomHexColor()
+    }
   });
 
 
   for (n in data.nodes) {
-    //node_data.push({ id: in_data.nodes[n]['Event_Id'], properties: in_data.nodes[n] })
     node = data.nodes[n]['e']
-
-    if (node.activity != null) {
-      node.label = node.activity.replaceAll("_", " ")
-    }
-
-    g.setNode(node.Event_Id, { label: node.label, robot: node.robot, labelStyle: "font-size: 22px" })
-  }
-
-  //g.setNode('drone', { type: 'start', label: 'drone' });
-  //g.setNode('tractor_1', { type: 'start', label: 'tractor_1' });
-  //g.setNode('tractor_2', { type: 'start', label: 'tractor_2' });
-  //g.setNode('msg_id', { type: 'start', label: 'msg_id' });
-
-
-  g.nodes().forEach(function (v) {
-    var node = g.node(v);
-    var robot = node.robot
-    console.log(node)
-    if (node.label === 'start') {
-      node.shape = 'circle';
-      node.r = 15; // Radius of the circle
-      node.style = 'fill: white';
-    } else if (node.label === 'end') {
-      node.shape = 'circle';
-      node.r = 15;
-      node.style = 'fill: #E55451';
+    var entity = ''
+    // check if it is a start node
+    if (node.Event_Id == node.activity) {
+      entity = node.Event_Id
+      g.setNode(entity, { label: entity, type: 'start', labelStyle: "font-size: 22px", shape: 'circle', r: 15, style: 'fill: white' })
     }
     else {
-      node.shape = 'rect';
-      node.style = 'fill: ' + colorDict[robot]
-    }
+      if (node.activity != null) {
+        node.label = node.activity.replaceAll("_", " ")
+      }
 
-    if (node.type) {
-      node.shape = 'circle';
-      node.r = 15; // Radius of the circle
-      node.style = 'fill: white';
-    }
+      // create dynamic event node variables 
+      var nodeProps = { label: node.label, labelStyle: "font-size: 22px", shape: 'rect' }
+      uniqueEntityTypes.forEach(entity => {
+        nodeProps[entity] = node[entity]
+        var this_ent = node[entity]
+        nodeProps.style = 'fill: ' + colorDictNodes[this_ent]
+        nodeProps.rx = nodeProps.ry = 5;
+      });
 
-    // Round the corners of the nodes
-    node.rx = node.ry = 5;
-  });
+      console.log(nodeProps)
+      g.setNode(node.Event_Id, nodeProps)
+    }
+  }
 
   edges = []
   for (e in data.edges) {
@@ -119,50 +154,32 @@ function generate_dagre(data) {
     var edge_weight = edge.edge_properties.edge_weight
     var edge_type = edge.edge_properties.Type
 
-    //if (edge_weight > 20) { // filter less frequent behavior
-    /*if (edge.from == edge.to && edge_type != 'robot') {
-      continue
-    }*/
 
-    g.setEdge(edge.from, edge.to, {
-      label: edge_type + ' : ' + edge_weight,
-      name: edge.from + '-' + edge_label + '-' + edge.to,
-      curve: d3.curveBasis,
-      labelpos: 'c', // label position to center
-      labeloffset: -10, // y offset to decrease edge-label separation
-      visible: true,
-      type: edge_type
-    })
+    if (edge_label == 'start') {
+      g.setEdge(edge.from, edge.to, {
+        label: '',
+        name: 'start',
+        curve: d3.curveLinear,
+        class: 'dashed-edge'
+      });
+    } else {
+      /*if (edge_weight > 20) { // filter less frequent behavior
+        if (edge.from == edge.to && edge_type != 'robot') {
+          continue
+        }*/
+      g.setEdge(edge.from, edge.to, {
+        label: edge_type + ' : ' + edge_weight,
+        name: edge.from + '-' + edge_label + '-' + edge.to,
+        curve: d3.curveBasis,
+        labelpos: 'c', // label position to center
+        labeloffset: -10, // y offset to decrease edge-label separation
+        visible: true,
+        type: edge_type,
+        style: 'stroke: ' + colorDictEdges[edge_type] + '; fill:none'
+      })
+    }
     //}
   }
-
-  /*
-    g.setEdge('drone', 'c_takeoff_drone', {
-      label: '',
-      name: 'START',
-      curve: d3.curveLinear,
-      class: 'dashed-edge'
-    });
-  
-    g.setEdge('tractor_1', 'c_weed_position?_tractor_1', {
-      label: '',
-      name: 'START',
-      curve: d3.curveLinear,
-      class: 'dashed-edge'
-    });
-  
-    g.setEdge('tractor_2', 'c_weed_position?_tractor_2', {
-      label: '',
-      name: 'START',
-      curve: d3.curveLinear,
-      class: 'dashed-edge'
-    });
-  */
-  //g.removeEdge('c_land_drone','c_takeoff_drone');
-  //g.removeEdge('c_stop_tractor_1','c_weed_position?_tractor_1');
-  //g.removeEdge('c_stop_tractor_2','c_weed_position?_tractor_2');
-
-  //g.graph().nodesep = 100;
 
   console.log(g)
 
@@ -171,6 +188,8 @@ function generate_dagre(data) {
 
   let initialZoomState;
 
+  svg.selectAll("g.edgeLabel").select("rect")
+    .style("fill", "yellow"); // Change this to the desired background color
   // Create a zoom behavior
   const zoom = d3.zoom().on('zoom', (event) => {
     svgGroup.attr('transform', event.transform);
@@ -363,7 +382,7 @@ function toggleEdgeVisibility() {
   });
 
 
-  console.log(newGraph.edges())
+  //console.log(newGraph.edges())
 
   // Render the updated graph
   svg.selectAll('*').remove(); // Clear the existing SVG content
@@ -381,4 +400,22 @@ function toggleEdgeVisibility() {
 
   render(svgGroup, newGraph);
   addOnFunctionalities(svgGroup, newGraph)
+}
+
+
+function generateRandomHexColor() {
+  // Generate random R, G, and B values
+  var r = Math.floor(Math.random() * 256);
+  var g = Math.floor(Math.random() * 256);
+  var b = Math.floor(Math.random() * 256);
+
+  // Convert decimal to hexadecimal
+  var rHex = r.toString(16).padStart(2, '0');
+  var gHex = g.toString(16).padStart(2, '0');
+  var bHex = b.toString(16).padStart(2, '0');
+
+  // Concatenate R, G, and B values to form a hex color
+  var hexColor = '#' + rHex + gHex + bHex;
+
+  return hexColor;
 }
