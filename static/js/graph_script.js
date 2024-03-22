@@ -29,8 +29,6 @@ function generate_dagre(data) {
     multiranksep: 50
   });
 
-  console.log(g)
-
   // Set an object for the graph label
   g.setGraph({ rankdir: 'TB', nodesep: 25 });
 
@@ -141,7 +139,6 @@ function generate_dagre(data) {
         nodeProps.rx = nodeProps.ry = 5;
       });
 
-      console.log(nodeProps)
       g.setNode(node.Event_Id, nodeProps)
     }
   }
@@ -163,25 +160,33 @@ function generate_dagre(data) {
         class: 'dashed-edge'
       });
     } else {
-      /*if (edge_weight > 20) { // filter less frequent behavior
+      if (edge_weight > 20) { // filter less frequent behavior
         if (edge.from == edge.to && edge_type != 'robot') {
           continue
-        }*/
-      g.setEdge(edge.from, edge.to, {
-        label: edge_type + ' : ' + edge_weight,
-        name: edge.from + '-' + edge_label + '-' + edge.to,
-        curve: d3.curveBasis,
-        labelpos: 'c', // label position to center
-        labeloffset: -10, // y offset to decrease edge-label separation
-        visible: true,
-        type: edge_type,
-        style: 'stroke: ' + colorDictEdges[edge_type] + '; fill:none'
-      })
+        }
+        else if(edge.from.includes('weed_position?') && edge.to.includes('weed_position?')){
+          continue
+        }
+        else if(edge.from.includes('tractor_position!') && edge.to.includes('tractor_position!')){
+          continue
+        }
+        else if(edge.from.includes('closest_tractor?') && edge.to.includes('closest_tractor?')){
+          continue
+        }
+        else {
+        g.setEdge(edge.from, edge.to, {
+          label: edge_type + ' : ' + edge_weight,
+          name: edge.from + '-' + edge_label + '-' + edge.to,
+          curve: d3.curveBasis,
+          labelpos: 'c', // label position to center
+          labeloffset: -10, // y offset to decrease edge-label separation
+          visible: true,
+          type: edge_type,
+          style: 'stroke: ' + colorDictEdges[edge_type] + '; fill:none'
+        })
+      }}
     }
-    //}
   }
-
-  console.log(g)
 
   const svg = d3.select('#graph-container').append('svg');
   const svgGroup = svg.append('g');
@@ -380,9 +385,6 @@ function toggleEdgeVisibility() {
       newGraph.setEdge(edgeObj.v, edgeObj.w, edge, edgeObj.name);
     }
   });
-
-
-  //console.log(newGraph.edges())
 
   // Render the updated graph
   svg.selectAll('*').remove(); // Clear the existing SVG content

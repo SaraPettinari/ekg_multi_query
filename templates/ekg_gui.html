@@ -2,6 +2,8 @@
 <html>
 
 <head>
+    <title>Tale Miner</title>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" type="text/css">
@@ -108,10 +110,10 @@
                     </button>
 
                     <button class="btn btn-outline-dark" title="Please Discover Process" type="button"
-                        onclick="openNewTab()" id="measures">Measurements GUI</button>
+                        onclick="openNewTab()" id="measures">Enhancement GUI</button>
                     <script>
                         function openNewTab() {
-                            localStorage.setItem('sharedContent', document.getElementById('graph-container').innerHTML);
+                            localStorage.setItem('shared-graph-container', document.getElementById('graph-container').innerHTML);
                             window.open("{{ url_for('graph.measurements_gui') }}", "_blank");
                         }
                     </script>

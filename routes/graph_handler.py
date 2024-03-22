@@ -42,7 +42,11 @@ def set_data():
         load_query = queries.load_generator(out_data, node_type=cn.EVENT)
 
         # uploads log data into neo4j db
-        ekg.load_data(load_query)
+        path_dict = ekg.load_data(load_query)
+        
+        session['communication'] = path_dict['communication_path']
+        session['space'] = path_dict['space_path']
+        
         
         #session[cn.ENTITIES] = entity_list
         # check if some entities needs to be created
@@ -149,7 +153,7 @@ def get_graph():
 def measurements_gui():
     args = request.args
     activity_name = args.get('activity_id')
-    ekg.get_space()
-    session['communication'] = ''
-    session['current_activity'] = activity_name
-    return render_template('measurements_gui.html')
+    if activity_name != None:
+        session['current_activity'] = activity_name
+    
+    return render_template('enhancement.html')

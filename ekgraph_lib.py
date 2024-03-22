@@ -3,7 +3,6 @@ from scripts.queries import ElementType
 import pandas as pd
 import scripts.queries as queries
 import scripts.config as config
-import datetime
 import scripts.constants as cn
 import scripts.perspective_handler as ph
 
@@ -23,7 +22,17 @@ class EKGraph:
         @parameter :load_query: query to execute
         '''
         self.session.run(load_query)
-
+        
+        # retrieve data
+        events = self.session.run(queries.get_node_typed('Event'))
+        events = events.values()
+        
+        # create communication plot        
+        comm_path = ph.get_communication_data(events)
+        
+        # create space plot        
+        space_path = ph.get_space_data(events)
+        
         # delete events with lifecycle different from start
         self.session.run(""" 
                         MATCH (e:Event)
@@ -31,6 +40,7 @@ class EKGraph:
                         DELETE e
                         """)
         
+        return {'communication_path': comm_path, 'space_path': space_path}        
 
     def set_entity_from_events(self, entity_type):
         '''
@@ -201,12 +211,3 @@ class EKGraph:
         return data
     
 
-def neo_datetime_conversion(Time):
-    '''
-    From Neo4j datetime to datetime
-    '''
-    if type(Time) != float:
-        millis = int(Time.nanosecond/1000)
-        t = datetime.datetime(Time.year, Time.month, Time.day,
-                              Time.hour, Time.minute, Time.second, millis)
-        return t

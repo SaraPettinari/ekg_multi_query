@@ -137,6 +137,12 @@ def set_super_obs_entity(entity_type, agg_type):
 
 ############## GETTERS ###################
 
+def get_node_typed(node_type):
+    return(f"""
+            MATCH (n:{node_type})
+            RETURN properties(n) as node
+            """)
+
 
 def get_entity_data():
     return("""
